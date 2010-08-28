@@ -89,7 +89,6 @@ struct backing_dev_info {
 	unsigned long old_dirty_threshold;
 
 	struct prop_local_percpu completions;
-	int dirty_exceeded;
 
 	/* last time exceeded (limit - limit/DIRTY_MARGIN) */
 	unsigned long dirty_exceed_time;

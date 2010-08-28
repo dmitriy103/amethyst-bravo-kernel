@@ -667,8 +667,6 @@ int bdi_init(struct backing_dev_info *bdi)
 			goto err;
 	}
 
-	bdi->dirty_exceeded = 0;
-
 	bdi->bw_time_stamp = jiffies;
 	bdi->written_stamp = 0;
 
