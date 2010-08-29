@@ -139,6 +139,16 @@ unsigned long bdi_dirty_limit(struct backing_dev_info *bdi,
 			       unsigned long dirty,
 			       unsigned long dirty_pages);
 
+void bdi_update_bandwidth(struct backing_dev_info *bdi,
+			  unsigned long start_time,
+			  unsigned long bdi_dirty,
+			  unsigned long bdi_thresh);
+static inline void bdi_update_write_bandwidth(struct backing_dev_info *bdi,
+					      unsigned long start_time)
+{
+	bdi_update_bandwidth(bdi, start_time, 0, 0);
+}
+
 void page_writeback_init(void);
 void balance_dirty_pages_ratelimited_nr(struct address_space *mapping,
 					unsigned long nr_pages_dirtied);

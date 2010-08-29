@@ -668,6 +668,8 @@ static long wb_writeback(struct bdi_writeback *wb,
 		write_chunk = LONG_MAX;
 
 	wbc.wb_start = jiffies; /* livelock avoidance */
+	bdi_update_write_bandwidth(wb->bdi, wbc.wb_start);
+
 	for (;;) {
 		/*
 		 * Stop writeback when nr_pages has been consumed
@@ -702,6 +704,8 @@ static long wb_writeback(struct bdi_writeback *wb,
 		else
 			writeback_inodes_wb(wb, &wbc);
 		trace_wbc_writeback_written(&wbc, wb->bdi);
+
+		bdi_update_write_bandwidth(wb->bdi, wbc.wb_start);
 
 		work->nr_pages -= write_chunk - wbc.nr_to_write;
 		wrote += write_chunk - wbc.nr_to_write;

@@ -660,6 +660,9 @@ int bdi_init(struct backing_dev_info *bdi)
 			goto err;
 	}
 
+	spin_lock_init(&bdi->bw_lock);
+	bdi->write_bandwidth = 100 << (20 - PAGE_SHIFT);  /* 100 MB/s */
+
 	bdi->dirty_exceeded = 0;
 	err = prop_local_init_percpu(&bdi->completions);
 

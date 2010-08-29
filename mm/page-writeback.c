@@ -521,6 +521,56 @@ out:
 	return 1 + int_sqrt(dirty_thresh - dirty_pages);
 }
 
+static void __bdi_update_write_bandwidth(struct backing_dev_info *bdi,
+					 unsigned long elapsed,
+					 unsigned long written)
+{
+	const unsigned long period = roundup_pow_of_two(HZ);
+	u64 bw;
+
+	bw = written - bdi->written_stamp;
+	bw *= HZ;
+	if (elapsed > period / 2) {
+		do_div(bw, elapsed);
+		elapsed = period / 2;
+		bw *= elapsed;
+	}
+	bw += (u64)bdi->write_bandwidth * (period - elapsed);
+	bdi->write_bandwidth = bw >> ilog2(period);
+}
+
+void bdi_update_bandwidth(struct backing_dev_info *bdi,
+			  unsigned long start_time,
+			  unsigned long bdi_dirty,
+			  unsigned long bdi_thresh)
+{
+	unsigned long elapsed;
+	unsigned long written;
+
+	if (!spin_trylock(&bdi->bw_lock))
+		return;
+
+	elapsed = jiffies - bdi->bw_time_stamp;
+	written = percpu_counter_read(&bdi->bdi_stat[BDI_WRITTEN]);
+
+	/* skip quiet periods when disk bandwidth is under-utilized */
+	if (elapsed > HZ/2 &&
+	    elapsed > jiffies - start_time)
+		goto snapshot;
+
+	/* rate-limit, only update once every 100ms */
+	if (elapsed <= HZ/10)
+		goto unlock;
+
+	__bdi_update_write_bandwidth(bdi, elapsed, written);
+
+snapshot:
+	bdi->written_stamp = written;
+	bdi->bw_time_stamp = jiffies;
+unlock:
+	spin_unlock(&bdi->bw_lock);
+}
+
 /*
  * balance_dirty_pages() must be called by processes which are generating dirty
  * data.  It looks at the number of dirty pages in the machine and will force
@@ -537,11 +587,12 @@ static void balance_dirty_pages(struct address_space *mapping,
 	unsigned long background_thresh;
 	unsigned long dirty_thresh;
 	unsigned long bdi_thresh;
-	unsigned long bw;
+	unsigned long long bw;
 	unsigned long period;
 	unsigned long pause = 0;
 	bool dirty_exceeded = false;
 	struct backing_dev_info *bdi = mapping->backing_dev_info;
+	unsigned long start_time = jiffies;
 
 	for (;;) {
 		/*
@@ -585,17 +636,19 @@ static void balance_dirty_pages(struct address_space *mapping,
 				    bdi_stat(bdi, BDI_WRITEBACK);
 		}
 
+		bdi_update_bandwidth(bdi, start_time, bdi_dirty, bdi_thresh);
+
 		if (bdi_dirty >= bdi_thresh || nr_dirty > dirty_thresh) {
 			pause = MAX_PAUSE;
 			goto pause;
 		}
 
-		bw = 100 << 20; /* use static 100MB/s for the moment */
+		bw = bdi->write_bandwidth;
 
 		bw = bw * (bdi_thresh - bdi_dirty);
 		do_div(bw, bdi_thresh / TASK_SOFT_DIRTY_LIMIT + 1);
 
-		period = HZ * (pages_dirtied << PAGE_CACHE_SHIFT) / (bw + 1) + 1;
+		period = HZ * pages_dirtied / ((unsigned long)bw + 1) + 1;
 		pause = current->paused_when + period - jiffies;
 		/*
 		 * Take it as long think time if pause falls into (-10s, 0).

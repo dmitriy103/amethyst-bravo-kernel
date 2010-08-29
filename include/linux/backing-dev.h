@@ -74,6 +74,11 @@ struct backing_dev_info {
 
 	struct percpu_counter bdi_stat[NR_BDI_STAT_ITEMS];
 
+	spinlock_t bw_lock;
+	unsigned long bw_time_stamp;
+	unsigned long written_stamp;
+	unsigned long write_bandwidth;
+
 	struct prop_local_percpu completions;
 	int dirty_exceeded;
 
