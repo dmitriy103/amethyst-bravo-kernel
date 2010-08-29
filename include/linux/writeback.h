@@ -22,6 +22,11 @@ extern spinlock_t inode_lock;
 #define TASK_SOFT_DIRTY_LIMIT	(BDI_SOFT_DIRTY_LIMIT * 2)
 
 /*
+ * 4MB minimal write chunk size
+ */
+#define MIN_WRITEBACK_PAGES     (4096UL >> (PAGE_CACHE_SHIFT - 10))
+
+/*
  * fs/fs-writeback.c
  */
 enum writeback_sync_modes {
