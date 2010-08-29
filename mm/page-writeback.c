@@ -472,6 +472,79 @@ unsigned long bdi_dirty_limit(struct backing_dev_info *bdi, unsigned long dirty)
 	return bdi_dirty;
 }
 
+static void __bdi_update_write_bandwidth(struct backing_dev_info *bdi,
+					 unsigned long elapsed,
+					 unsigned long written)
+{
+	const unsigned long period = roundup_pow_of_two(3 * HZ);
+	unsigned long avg = bdi->avg_bandwidth;
+	unsigned long old = bdi->write_bandwidth;
+	unsigned long cur;
+	u64 bw;
+
+	bw = written - bdi->written_stamp;
+	bw *= HZ;
+	if (unlikely(elapsed > period / 2)) {
+		do_div(bw, elapsed);
+		elapsed = period / 2;
+		bw *= elapsed;
+	}
+	bw += (u64)bdi->write_bandwidth * (period - elapsed);
+	cur = bw >> ilog2(period);
+	bdi->write_bandwidth = cur;
+
+	/*
+	 * one more level of smoothing
+	 */
+	if (avg > old && old > cur)
+		avg -= (avg - old) >> 5;
+
+	if (avg < old && old < cur)
+		avg += (old - avg) >> 5;
+
+	bdi->avg_bandwidth = avg;
+}
+
+void bdi_update_bandwidth(struct backing_dev_info *bdi,
+			  unsigned long thresh,
+			  unsigned long dirty,
+			  unsigned long bdi_dirty,
+			  unsigned long start_time)
+{
+	static DEFINE_SPINLOCK(dirty_lock);
+	unsigned long now = jiffies;
+	unsigned long elapsed;
+	unsigned long written;
+
+	if (!spin_trylock(&dirty_lock))
+		return;
+
+	elapsed = now - bdi->bw_time_stamp;
+	written = percpu_counter_read(&bdi->bdi_stat[BDI_WRITTEN]);
+
+	/* skip quiet periods when disk bandwidth is under-utilized */
+	if (elapsed > HZ/2 &&
+	    elapsed > now - start_time)
+		goto snapshot;
+
+	/*
+	 * rate-limit, only update once every 100ms. Demand higher threshold
+	 * on the flusher so that the throttled task(s) can do most updates.
+	 */
+	if (!thresh && elapsed <= HZ/4)
+		goto unlock;
+	if (elapsed <= HZ/10)
+		goto unlock;
+
+	__bdi_update_write_bandwidth(bdi, elapsed, written);
+
+snapshot:
+	bdi->written_stamp = written;
+	bdi->bw_time_stamp = now;
+unlock:
+	spin_unlock(&dirty_lock);
+}
+
 /*
  * balance_dirty_pages() must be called by processes which are generating dirty
  * data.  It looks at the number of dirty pages in the machine and will force
@@ -491,6 +564,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 	unsigned long pause = 1;
 	bool dirty_exceeded = false;
 	struct backing_dev_info *bdi = mapping->backing_dev_info;
+	unsigned long start_time = jiffies;
 
 	if (!bdi_cap_account_dirty(bdi))
 		return;
@@ -538,6 +612,11 @@ static void balance_dirty_pages(struct address_space *mapping,
 			bdi_nr_reclaimable = bdi_stat(bdi, BDI_RECLAIMABLE);
 			bdi_nr_writeback = bdi_stat(bdi, BDI_WRITEBACK);
 		}
+
+		bdi_update_bandwidth(bdi, dirty_thresh,
+				     nr_reclaimable + nr_writeback,
+				     bdi_nr_reclaimable + bdi_nr_writeback,
+				     start_time);
 
 		/*
 		 * The bdi thresh is somehow "soft" limit derived from the
