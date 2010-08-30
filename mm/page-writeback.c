@@ -754,6 +754,8 @@ static void balance_dirty_pages(struct address_space *mapping,
 		pause_max = max_pause(bdi_thresh);
 
 		if (avg_dirty >= task_thresh || nr_dirty > dirty_thresh) {
+			bw = 0;
+			period = 0;
 			pause = pause_max;
 			goto pause;
 		}
@@ -781,6 +783,15 @@ static void balance_dirty_pages(struct address_space *mapping,
 		 * it may be a light dirtier.
 		 */
 		if (unlikely(-pause < HZ*10)) {
+			trace_balance_dirty_pages(bdi,
+						  bdi_dirty,
+						  avg_dirty,
+						  bdi_thresh,
+						  task_thresh,
+						  pages_dirtied,
+						  bw,
+						  period,
+						  pause);
 			if (-pause <= HZ/10)
 				current->paused_when += period;
 			else
@@ -791,6 +802,15 @@ static void balance_dirty_pages(struct address_space *mapping,
 		pause = clamp_val(pause, 1, pause_max);
 
 pause:
+		trace_balance_dirty_pages(bdi,
+					  bdi_dirty,
+					  avg_dirty,
+					  bdi_thresh,
+					  task_thresh,
+					  pages_dirtied,
+					  bw,
+					  period,
+					  pause);
 		current->paused_when = jiffies;
 		__set_current_state(TASK_UNINTERRUPTIBLE);
 		io_schedule_timeout(pause);
