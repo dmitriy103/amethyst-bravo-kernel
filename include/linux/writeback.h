@@ -169,6 +169,11 @@ void global_dirty_limits(unsigned long *pbackground, unsigned long *pdirty);
 unsigned long bdi_dirty_limit(struct backing_dev_info *bdi,
 			       unsigned long dirty);
 
+void bdi_writeout_fraction(struct backing_dev_info *bdi,
+			   long *numerator, long *denominator);
+void task_dirties_fraction(struct task_struct *tsk,
+			   long *numerator, long *denominator);
+
 void bdi_update_bandwidth(struct backing_dev_info *bdi,
 			  unsigned long thresh,
 			  unsigned long dirty,

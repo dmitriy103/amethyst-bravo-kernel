@@ -147,9 +147,6 @@ DEFINE_EVENT(wbc_class, name, \
 DEFINE_WBC_EVENT(wbc_writeback_start);
 DEFINE_WBC_EVENT(wbc_writeback_written);
 DEFINE_WBC_EVENT(wbc_writeback_wait);
-DEFINE_WBC_EVENT(wbc_balance_dirty_start);
-DEFINE_WBC_EVENT(wbc_balance_dirty_written);
-DEFINE_WBC_EVENT(wbc_balance_dirty_wait);
 DEFINE_WBC_EVENT(wbc_writepage);
 
 #define KBps(x)			((x) << (PAGE_SHIFT - 10))
@@ -199,6 +196,95 @@ TRACE_EVENT(dirty_throttle_bandwidth,
 		  __entry->ref_bw,	/* reference throttle bandwidth */
 		  __entry->avg_ref_bw	/* smoothed reference bandwidth */
 	)
+);
+
+TRACE_EVENT(balance_dirty_pages,
+
+	TP_PROTO(struct backing_dev_info *bdi,
+		 unsigned long thresh,
+		 unsigned long dirty,
+		 unsigned long bdi_dirty,
+		 unsigned long task_bw,
+		 unsigned long dirtied,
+		 unsigned long period,
+		 long pause,
+		 unsigned long start_time),
+
+	TP_ARGS(bdi, thresh, dirty, bdi_dirty,
+		task_bw, dirtied, period, pause, start_time),
+
+	TP_STRUCT__entry(
+		__array(	 char,	bdi, 32)
+		__field(unsigned long,	bdi_weight)
+		__field(unsigned long,	task_weight)
+		__field(unsigned long,	limit)
+		__field(unsigned long,	goal)
+		__field(unsigned long,	dirty)
+		__field(unsigned long,	bdi_goal)
+		__field(unsigned long,	bdi_dirty)
+		__field(unsigned long,	avg_dirty)
+		__field(unsigned long,	base_bw)
+		__field(unsigned long,	task_bw)
+		__field(unsigned long,	dirtied)
+		__field(unsigned long,	period)
+		__field(	 long,	think)
+		__field(	 long,	pause)
+		__field(unsigned long,	paused)
+	),
+
+	TP_fast_assign(
+		long numerator;
+		long denominator;
+
+		strlcpy(__entry->bdi, dev_name(bdi->dev), 32);
+
+		bdi_writeout_fraction(bdi, &numerator, &denominator);
+		__entry->bdi_weight	= 1000 * numerator / denominator;
+		task_dirties_fraction(current, &numerator, &denominator);
+		__entry->task_weight	= 1000 * numerator / denominator;
+
+		__entry->limit = default_backing_dev_info.dirty_threshold;
+		__entry->goal		= thresh - thresh / DIRTY_SCOPE;
+		__entry->dirty		= dirty;
+		__entry->bdi_goal	= bdi->dirty_threshold -
+					  bdi->dirty_threshold / DIRTY_SCOPE;
+		__entry->bdi_dirty	= bdi_dirty;
+		__entry->avg_dirty	= bdi->avg_dirty;
+		__entry->base_bw	= KBps(bdi->throttle_bandwidth) >>
+								BASE_BW_SHIFT;
+		__entry->task_bw	= KBps(task_bw);
+		__entry->dirtied	= dirtied;
+		__entry->think		= current->paused_when == 0 ? 0 :
+			 (long)(jiffies - current->paused_when) * 1000 / HZ;
+		__entry->period		= period * 1000 / HZ;
+		__entry->pause		= pause * 1000 / HZ;
+		__entry->paused		= (jiffies - start_time) * 1000 / HZ;
+	),
+
+
+	TP_printk("bdi %s: bdi_weight=%lu task_weight=%lu "
+		  "limit=%lu goal=%lu dirty=%lu "
+		  "bdi_goal=%lu bdi_dirty=%lu avg_dirty=%lu "
+		  "base_bw=%lu task_bw=%lu "
+		  "dirtied=%lu "
+		  "period=%lu think=%ld pause=%ld paused=%lu",
+		  __entry->bdi,
+		  __entry->bdi_weight,
+		  __entry->task_weight,
+		  __entry->limit,
+		  __entry->goal,
+		  __entry->dirty,
+		  __entry->bdi_goal,
+		  __entry->bdi_dirty,
+		  __entry->avg_dirty,
+		  __entry->base_bw,	/* base throttle bandwidth */
+		  __entry->task_bw,	/* task throttle bandwidth */
+		  __entry->dirtied,
+		  __entry->period,	/* ms */
+		  __entry->think,	/* ms */
+		  __entry->pause,	/* ms */
+		  __entry->paused	/* ms */
+		  )
 );
 
 DECLARE_EVENT_CLASS(writeback_congest_waited_template,

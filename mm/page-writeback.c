@@ -227,14 +227,14 @@ void task_dirty_inc(struct task_struct *tsk)
 /*
  * Obtain an accurate fraction of the BDI's portion.
  */
-static void bdi_writeout_fraction(struct backing_dev_info *bdi,
+void bdi_writeout_fraction(struct backing_dev_info *bdi,
 		long *numerator, long *denominator)
 {
 	prop_fraction_percpu(&vm_completions, &bdi->completions,
 				numerator, denominator);
 }
 
-static inline void task_dirties_fraction(struct task_struct *tsk,
+void task_dirties_fraction(struct task_struct *tsk,
 		long *numerator, long *denominator)
 {
 	prop_fraction_single(&vm_dirties, &tsk->dirties,
@@ -1251,6 +1251,15 @@ static void balance_dirty_pages(struct address_space *mapping,
 		 * it may be a light dirtier.
 		 */
 		if (unlikely(-pause < HZ*10)) {
+			trace_balance_dirty_pages(bdi,
+						  dirty_thresh,
+						  nr_dirty,
+						  bdi_dirty,
+						  bw,
+						  pages_dirtied,
+						  period,
+						  pause,
+						  start_time);
 			if (-pause > HZ/2) {
 				current->paused_when = jiffies;
 				current->nr_dirtied = 0;
@@ -1267,6 +1276,15 @@ static void balance_dirty_pages(struct address_space *mapping,
 			pause = pause_max;
 
 pause:
+		trace_balance_dirty_pages(bdi,
+					  dirty_thresh,
+					  nr_dirty,
+					  bdi_dirty,
+					  bw,
+					  pages_dirtied,
+					  period,
+					  pause,
+					  start_time);
 		current->paused_when = jiffies;
 		__set_current_state(TASK_UNINTERRUPTIBLE);
 		io_schedule_timeout(pause);
