@@ -107,6 +107,8 @@ struct mddi_info {
 
 	struct platform_device client_pdev;
 	struct resource client_vsync_res;
+	unsigned type;
+	char debugfs_buf[32];
 };
 
 static void mddi_init_rev_encap(struct mddi_info *mddi);
