@@ -33,7 +33,10 @@ struct compact_control {
 	unsigned long nr_migratepages;	/* Number of pages to migrate */
 	unsigned long free_pfn;		/* isolate_freepages search base */
 	unsigned long migrate_pfn;	/* isolate_migratepages search base */
-	bool sync;			/* Synchronous migration */
+	bool migrate_fast_scan;		/* If true, only MIGRATE_MOVABLE blocks
+					 * are scanned for pages to migrate and
+					 * migration is asynchronous
+					 */
 
 	/* Account for isolated anon and file pages */
 	unsigned long nr_anon;
@@ -240,6 +243,7 @@ static unsigned long isolate_migratepages(struct zone *zone,
 					struct compact_control *cc)
 {
 	unsigned long low_pfn, end_pfn;
+	unsigned long last_pageblock_nr = 0, pageblock_nr;
 	unsigned long nr_scanned = 0, nr_isolated = 0;
 	struct list_head *migratelist = &cc->migratepages;
 
@@ -279,6 +283,17 @@ static unsigned long isolate_migratepages(struct zone *zone,
 		page = pfn_to_page(low_pfn);
 		if (PageBuddy(page))
 			continue;
+
+		/* When fast scanning, only scan in MOVABLE blocks */
+		pageblock_nr = low_pfn >> pageblock_order;
+		if (cc->migrate_fast_scan &&
+				last_pageblock_nr != pageblock_nr &&
+				get_pageblock_migratetype(page) != MIGRATE_MOVABLE) {
+			low_pfn += pageblock_nr_pages;
+			low_pfn = ALIGN(low_pfn, pageblock_nr_pages) - 1;
+			last_pageblock_nr = pageblock_nr;
+			continue;
+		}
 
 		/* Try isolate the page */
 		if (__isolate_lru_page(page, ISOLATE_BOTH, 0) != 0)
@@ -450,7 +465,7 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 		nr_migrate = cc->nr_migratepages;
 		migrate_pages(&cc->migratepages, compaction_alloc,
 				(unsigned long)cc, false,
-				cc->sync);
+				cc->migrate_fast_scan ? false : true);
 		update_nr_listpages(cc);
 		nr_remaining = cc->nr_migratepages;
 
@@ -484,8 +499,8 @@ static unsigned long compact_zone_order(struct zone *zone,
 		.nr_migratepages = 0,
 		.order = order,
 		.migratetype = allocflags_to_migratetype(gfp_mask),
+		.migrate_fast_scan = true,
 		.zone = zone,
-		.sync = false,
 	};
 	INIT_LIST_HEAD(&cc.freepages);
 	INIT_LIST_HEAD(&cc.migratepages);
@@ -501,8 +516,8 @@ unsigned long reclaimcompact_zone_order(struct zone *zone,
 		.nr_migratepages = 0,
 		.order = order,
 		.migratetype = allocflags_to_migratetype(gfp_mask),
+		.migrate_fast_scan = false,
 		.zone = zone,
-		.sync = true,
 	};
 	INIT_LIST_HEAD(&cc.freepages);
 	INIT_LIST_HEAD(&cc.migratepages);
