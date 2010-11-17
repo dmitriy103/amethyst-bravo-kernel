@@ -32,6 +32,7 @@
 #include <linux/topology.h>
 #include <linux/cpu.h>
 #include <linux/cpuset.h>
+#include <linux/compaction.h>
 #include <linux/notifier.h>
 #include <linux/rwsem.h>
 #include <linux/delay.h>
@@ -59,12 +60,15 @@
  * LUMPY_MODE_CONTIGRECLAIM: For high-order allocations, take a reference
  *			page from the LRU and reclaim all pages within a
  *			naturally aligned range
+ * LUMPY_MODE_COMPACTION: For high-order allocations, reclaim a number of
+ *			order-0 pages and then compact the zone
  */
 typedef unsigned __bitwise__ lumpy_mode;
 #define LUMPY_MODE_SINGLE		((__force lumpy_mode)0x01u)
 #define LUMPY_MODE_ASYNC		((__force lumpy_mode)0x02u)
 #define LUMPY_MODE_SYNC			((__force lumpy_mode)0x04u)
 #define LUMPY_MODE_CONTIGRECLAIM	((__force lumpy_mode)0x08u)
+#define LUMPY_MODE_COMPACTION		((__force lumpy_mode)0x10u)
 
 struct scan_control {
 	/* Incremented by the number of inactive pages that were scanned */
@@ -283,25 +287,27 @@ unsigned long shrink_slab(unsigned long scanned, gfp_t gfp_mask,
 static void set_lumpy_reclaim_mode(int priority, struct scan_control *sc,
 				   bool sync)
 {
-	lumpy_mode mode = sync ? LUMPY_MODE_SYNC : LUMPY_MODE_ASYNC;
+	lumpy_mode syncmode = sync ? LUMPY_MODE_SYNC : LUMPY_MODE_ASYNC;
 
 	/*
-	 * Some reclaim have alredy been failed. No worth to try synchronous
-	 * lumpy reclaim.
+	 * Initially assume we are entering either lumpy reclaim or lumpy
+	 * compaction. Depending on the order, we will either set the sync
+	 * mode or just reclaim order-0 pages later.
 	 */
-	if (sync && sc->lumpy_reclaim_mode & LUMPY_MODE_SINGLE)
-		return;
+	if (COMPACTION_BUILD)
+		sc->lumpy_reclaim_mode = LUMPY_MODE_COMPACTION;
+	else
+		sc->lumpy_reclaim_mode = LUMPY_MODE_CONTIGRECLAIM;
 
 	/*
 	 * If we need a large contiguous chunk of memory, or have
 	 * trouble getting a small set of contiguous pages, we
 	 * will reclaim both active and inactive pages.
 	 */
-	sc->lumpy_reclaim_mode = LUMPY_MODE_CONTIGRECLAIM;
 	if (sc->order > PAGE_ALLOC_COSTLY_ORDER)
-		sc->lumpy_reclaim_mode |= mode;
+		sc->lumpy_reclaim_mode |= syncmode;
 	else if (sc->order && priority < DEF_PRIORITY - 2)
-		sc->lumpy_reclaim_mode |= mode;
+		sc->lumpy_reclaim_mode |= syncmode;
 	else
 		sc->lumpy_reclaim_mode = LUMPY_MODE_SINGLE | LUMPY_MODE_ASYNC;
 }
@@ -1382,11 +1388,18 @@ shrink_inactive_list(unsigned long nr_to_scan, struct zone *zone,
 	lru_add_drain();
 	spin_lock_irq(&zone->lru_lock);
 
+	/*
+	 * If we are lumpy compacting, we bump nr_to_scan to at least
+	 * the size of the page we are trying to allocate
+	 */
+	if (sc->lumpy_reclaim_mode & LUMPY_MODE_COMPACTION)
+		nr_to_scan = max(nr_to_scan, (1UL << sc->order));
+
 	if (scanning_global_lru(sc)) {
 		nr_taken = isolate_pages_global(nr_to_scan,
 			&page_list, &nr_scanned, sc->order,
-			sc->lumpy_reclaim_mode & LUMPY_MODE_SINGLE ?
-					ISOLATE_INACTIVE : ISOLATE_BOTH,
+			sc->lumpy_reclaim_mode & LUMPY_MODE_CONTIGRECLAIM ?
+					ISOLATE_BOTH : ISOLATE_INACTIVE,
 			zone, 0, file);
 		zone->pages_scanned += nr_scanned;
 		if (current_is_kswapd())
@@ -1398,8 +1411,8 @@ shrink_inactive_list(unsigned long nr_to_scan, struct zone *zone,
 	} else {
 		nr_taken = mem_cgroup_isolate_pages(nr_to_scan,
 			&page_list, &nr_scanned, sc->order,
-			sc->lumpy_reclaim_mode & LUMPY_MODE_SINGLE ?
-					ISOLATE_INACTIVE : ISOLATE_BOTH,
+			sc->lumpy_reclaim_mode & LUMPY_MODE_CONTIGRECLAIM ?
+					ISOLATE_BOTH : ISOLATE_INACTIVE,
 			zone, sc->mem_cgroup,
 			0, file);
 		/*
@@ -1431,6 +1444,9 @@ shrink_inactive_list(unsigned long nr_to_scan, struct zone *zone,
 	__count_zone_vm_events(PGSTEAL, zone, nr_reclaimed);
 
 	putback_lru_pages(zone, sc, nr_anon, nr_file, &page_list);
+
+	if (sc->lumpy_reclaim_mode & LUMPY_MODE_COMPACTION)
+		reclaimcompact_zone_order(zone, sc->order, sc->gfp_mask);
 
 	trace_mm_vmscan_lru_shrink_inactive(zone->zone_pgdat->node_id,
 		zone_idx(zone),

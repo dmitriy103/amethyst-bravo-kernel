@@ -384,9 +384,54 @@ static int compact_finished(struct zone *zone,
 	return COMPACT_CONTINUE;
 }
 
+static unsigned long compaction_suitable(struct zone *zone, int order)
+{
+	int fragindex;
+	unsigned long watermark;
+
+	/*
+	 * Watermarks for order-0 must be met for compaction. Note the 2UL.
+	 * This is because during migration, copies of pages need to be
+	 * allocated and for a short time, the footprint is higher
+	 */
+	watermark = low_wmark_pages(zone) + (2UL << order);
+	if (!zone_watermark_ok(zone, 0, watermark, 0, 0))
+		return COMPACT_SKIPPED;
+
+	/*
+	 * fragmentation index determines if allocation failures are due to
+	 * low memory or external fragmentation
+	 *
+	 * index of -1 implies allocations might succeed dependingon watermarks
+	 * index towards 0 implies failure is due to lack of memory
+	 * index towards 1000 implies failure is due to fragmentation
+	 *
+	 * Only compact if a failure would be due to fragmentation.
+	 */
+	fragindex = fragmentation_index(zone, order);
+	if (fragindex >= 0 && fragindex <= sysctl_extfrag_threshold)
+		return COMPACT_SKIPPED;
+
+	if (fragindex == -1 && zone_watermark_ok(zone, order, watermark, 0, 0))
+		return COMPACT_PARTIAL;
+
+	return COMPACT_CONTINUE;
+}
+
 static int compact_zone(struct zone *zone, struct compact_control *cc)
 {
 	int ret;
+
+	ret = compaction_suitable(zone, cc->order);
+	switch (ret) {
+	case COMPACT_PARTIAL:
+	case COMPACT_SKIPPED:
+		/* Compaction is likely to fail */
+		return ret;
+	case COMPACT_CONTINUE:
+		/* Fall through to compaction */
+		;
+	}
 
 	/* Setup to move all movable pages to the end of the zone */
 	cc->migrate_pfn = zone->zone_start_pfn;
@@ -445,6 +490,22 @@ static unsigned long compact_zone_order(struct zone *zone,
 	return compact_zone(zone, &cc);
 }
 
+unsigned long reclaimcompact_zone_order(struct zone *zone,
+						int order, gfp_t gfp_mask)
+{
+	struct compact_control cc = {
+		.nr_freepages = 0,
+		.nr_migratepages = 0,
+		.order = order,
+		.migratetype = allocflags_to_migratetype(gfp_mask),
+		.zone = zone,
+	};
+	INIT_LIST_HEAD(&cc.freepages);
+	INIT_LIST_HEAD(&cc.migratepages);
+
+	return compact_zone(zone, &cc);
+}
+
 int sysctl_extfrag_threshold = 500;
 
 /**
@@ -462,7 +523,6 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 	enum zone_type high_zoneidx = gfp_zone(gfp_mask);
 	int may_enter_fs = gfp_mask & __GFP_FS;
 	int may_perform_io = gfp_mask & __GFP_IO;
-	unsigned long watermark;
 	struct zoneref *z;
 	struct zone *zone;
 	int rc = COMPACT_SKIPPED;
@@ -480,43 +540,13 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 	/* Compact each zone in the list */
 	for_each_zone_zonelist_nodemask(zone, z, zonelist, high_zoneidx,
 								nodemask) {
-		int fragindex;
 		int status;
-
-		/*
-		 * Watermarks for order-0 must be met for compaction. Note
-		 * the 2UL. This is because during migration, copies of
-		 * pages need to be allocated and for a short time, the
-		 * footprint is higher
-		 */
-		watermark = low_wmark_pages(zone) + (2UL << order);
-		if (!zone_watermark_ok(zone, 0, watermark, 0, 0))
-			continue;
-
-		/*
-		 * fragmentation index determines if allocation failures are
-		 * due to low memory or external fragmentation
-		 *
-		 * index of -1 implies allocations might succeed depending
-		 * 	on watermarks
-		 * index towards 0 implies failure is due to lack of memory
-		 * index towards 1000 implies failure is due to fragmentation
-		 *
-		 * Only compact if a failure would be due to fragmentation.
-		 */
-		fragindex = fragmentation_index(zone, order);
-		if (fragindex >= 0 && fragindex <= sysctl_extfrag_threshold)
-			continue;
-
-		if (fragindex == -1 && zone_watermark_ok(zone, order, watermark, 0, 0)) {
-			rc = COMPACT_PARTIAL;
-			break;
-		}
 
 		status = compact_zone_order(zone, order, gfp_mask);
 		rc = max(status, rc);
 
-		if (zone_watermark_ok(zone, order, watermark, 0, 0))
+		/* If a normal allocation would succeed, stop compacting */
+		if (zone_watermark_ok(zone, order, low_wmark_pages(zone), 0, 0))
 			break;
 	}
 
