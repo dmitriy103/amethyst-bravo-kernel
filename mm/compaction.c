@@ -37,6 +37,9 @@ struct compact_control {
 					 * are scanned for pages to migrate and
 					 * migration is asynchronous
 					 */
+	unsigned long abort_migrate_pfn;/* Finish compaction when the migration
+					 * scanner reaches this PFN
+					 */
 
 	/* Account for isolated anon and file pages */
 	unsigned long nr_anon;
@@ -379,6 +382,10 @@ static int compact_finished(struct zone *zone,
 	if (cc->free_pfn <= cc->migrate_pfn)
 		return COMPACT_COMPLETE;
 
+	/* Compaction run completes if migration reaches abort_migrate_pfn */
+	if (cc->abort_migrate_pfn && cc->migrate_pfn >= cc->abort_migrate_pfn)
+		return COMPACT_COMPLETE;
+
 	/* Compaction run is not finished if the watermark is not met */
 	if (!zone_watermark_ok(zone, cc->order, watermark, 0, 0))
 		return COMPACT_CONTINUE;
@@ -449,10 +456,17 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 		;
 	}
 
-	/* Setup to move all movable pages to the end of the zone */
-	cc->migrate_pfn = zone->zone_start_pfn;
-	cc->free_pfn = cc->migrate_pfn + zone->spanned_pages;
-	cc->free_pfn &= ~(pageblock_nr_pages-1);
+	/*
+	 * Setup to move all movable pages to the end of the zone. If the
+	 * caller does not specify starting points for the scanners,
+	 * initialise them
+	 */
+	if (!cc->migrate_pfn)
+		cc->migrate_pfn = zone->zone_start_pfn;
+	if (!cc->free_pfn) {
+		cc->free_pfn = zone->zone_start_pfn + zone->spanned_pages;
+		cc->free_pfn &= ~(pageblock_nr_pages-1);
+	}
 
 	migrate_prep_local();
 
@@ -511,6 +525,8 @@ static unsigned long compact_zone_order(struct zone *zone,
 unsigned long reclaimcompact_zone_order(struct zone *zone,
 						int order, gfp_t gfp_mask)
 {
+	unsigned long start_migrate_pfn, ret;
+	struct page *anon_page, *file_page;
 	struct compact_control cc = {
 		.nr_freepages = 0,
 		.nr_migratepages = 0,
@@ -522,7 +538,23 @@ unsigned long reclaimcompact_zone_order(struct zone *zone,
 	INIT_LIST_HEAD(&cc.freepages);
 	INIT_LIST_HEAD(&cc.migratepages);
 
-	return compact_zone(zone, &cc);
+	/* Get a hint on where to start compacting from the LRU */
+	anon_page = lru_to_page(&zone->lru[LRU_BASE + LRU_INACTIVE_ANON].list);
+	file_page = lru_to_page(&zone->lru[LRU_BASE + LRU_INACTIVE_FILE].list);
+	cc.migrate_pfn = min(page_to_pfn(anon_page), page_to_pfn(file_page));
+	cc.migrate_pfn = ALIGN(cc.migrate_pfn, pageblock_nr_pages);
+	start_migrate_pfn = cc.migrate_pfn;
+
+	ret = compact_zone(zone, &cc);
+
+	/* Restart migration from the start of zone if the hint did not work */
+	if (!zone_watermark_ok(zone, cc.order, low_wmark_pages(zone), 0, 0)) {
+		cc.migrate_pfn = 0;
+		cc.abort_migrate_pfn = start_migrate_pfn;
+		ret = compact_zone(zone, &cc);
+	}
+
+	return ret;
 }
 
 int sysctl_extfrag_threshold = 500;

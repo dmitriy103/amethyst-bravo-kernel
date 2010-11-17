@@ -142,6 +142,8 @@ enum lru_list {
 
 #define for_each_evictable_lru(l) for (l = 0; l <= LRU_ACTIVE_FILE; l++)
 
+#define lru_to_page(_head) (list_entry((_head)->prev, struct page, lru))
+
 static inline int is_file_lru(enum lru_list l)
 {
 	return (l == LRU_INACTIVE_FILE || l == LRU_ACTIVE_FILE);
