@@ -537,6 +537,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 	unsigned long dirty_thresh;
 	unsigned long bdi_thresh;
 	unsigned long bw;
+	unsigned long period;
 	unsigned long pause = 0;
 	bool dirty_exceeded = false;
 	struct backing_dev_info *bdi = mapping->backing_dev_info;
@@ -583,7 +584,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 				    bdi_stat(bdi, BDI_WRITEBACK);
 		}
 
-		if (bdi_dirty >= bdi_thresh) {
+		if (bdi_dirty >= bdi_thresh || nr_dirty > dirty_thresh) {
 			pause = MAX_PAUSE;
 			goto pause;
 		}
@@ -593,12 +594,29 @@ static void balance_dirty_pages(struct address_space *mapping,
 		bw = bw * (bdi_thresh - bdi_dirty);
 		do_div(bw, bdi_thresh / TASK_SOFT_DIRTY_LIMIT + 1);
 
-		pause = HZ * (pages_dirtied << PAGE_CACHE_SHIFT) / (bw + 1);
+		period = HZ * (pages_dirtied << PAGE_CACHE_SHIFT) / (bw + 1) + 1;
+		pause = current->paused_when + period - jiffies;
+		/*
+		 * Take it as long think time if pause falls into (-10s, 0).
+		 * If it's less than 100ms, try to compensate it in future by
+		 * updating the virtual time; otherwise just reset the time, as
+		 * it may be a light dirtier.
+		 */
+		if (unlikely(-pause < HZ*10)) {
+			if (-pause <= HZ/10)
+				current->paused_when += period;
+			else
+				current->paused_when = jiffies;
+			pause = 1;
+			break;
+		}
 		pause = clamp_val(pause, 1, MAX_PAUSE);
 
 pause:
+		current->paused_when = jiffies;
 		__set_current_state(TASK_UNINTERRUPTIBLE);
 		io_schedule_timeout(pause);
+		current->paused_when += pause;
 
 		/*
 		 * The bdi thresh is somehow "soft" limit derived from the
