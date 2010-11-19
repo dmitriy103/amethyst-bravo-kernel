@@ -521,6 +521,36 @@ out:
 	return 1 + int_sqrt(dirty_thresh - dirty_pages);
 }
 
+static void __bdi_update_dirty_smooth(struct backing_dev_info *bdi,
+				      unsigned long dirty,
+				      unsigned long thresh)
+{
+	unsigned long avg = bdi->avg_dirty;
+	unsigned long old = bdi->old_dirty;
+
+	/* skip call from the flusher */
+	if (!thresh)
+		return;
+
+	if (avg > thresh) {
+		avg = dirty;
+		goto update;
+	}
+
+	if (dirty <= avg && dirty >= old)
+		goto out;
+
+	if (dirty >= avg && dirty <= old)
+		goto out;
+
+	avg = (avg * 15 + dirty) / 16;
+
+update:
+	bdi->avg_dirty = avg;
+out:
+	bdi->old_dirty = dirty;
+}
+
 /*
  * The bdi throttle bandwidth is introduced for resisting bdi_dirty from
  * getting too close to task_thresh. It allows scaling up to 1000+ concurrent
@@ -601,8 +631,9 @@ void bdi_update_bandwidth(struct backing_dev_info *bdi,
 	if (elapsed <= HZ/10)
 		goto unlock;
 
+	__bdi_update_dirty_smooth(bdi, bdi_dirty, bdi_thresh);
 	__bdi_update_write_bandwidth(bdi, elapsed, written);
-	__bdi_update_throttle_bandwidth(bdi, bdi_dirty, bdi_thresh);
+	__bdi_update_throttle_bandwidth(bdi, bdi->avg_dirty, bdi_thresh);
 
 snapshot:
 	bdi->written_stamp = written;
@@ -624,6 +655,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 	long nr_reclaimable;
 	long nr_dirty;
 	long bdi_dirty;  /* = file_dirty + writeback + unstable_nfs */
+	long avg_dirty;  /* smoothed bdi_dirty */
 	unsigned long background_thresh;
 	unsigned long dirty_thresh;
 	unsigned long bdi_thresh;
@@ -679,7 +711,11 @@ static void balance_dirty_pages(struct address_space *mapping,
 
 		bdi_update_bandwidth(bdi, start_time, bdi_dirty, bdi_thresh);
 
-		if (bdi_dirty >= task_thresh || nr_dirty > dirty_thresh) {
+		avg_dirty = bdi->avg_dirty;
+		if (avg_dirty < bdi_dirty || avg_dirty > task_thresh)
+			avg_dirty = bdi_dirty;
+
+		if (avg_dirty >= task_thresh || nr_dirty > dirty_thresh) {
 			pause = MAX_PAUSE;
 			goto pause;
 		}
@@ -692,10 +728,10 @@ static void balance_dirty_pages(struct address_space *mapping,
 		 * time when there are lots of dirtiers.
 		 */
 		bw = bdi->throttle_bandwidth;
-		bw = bw * (bdi_thresh - bdi_dirty);
+		bw = bw * (bdi_thresh - avg_dirty);
 		do_div(bw, bdi_thresh / BDI_SOFT_DIRTY_LIMIT + 1);
 
-		bw = bw * (task_thresh - bdi_dirty);
+		bw = bw * (task_thresh - avg_dirty);
 		do_div(bw, bdi_thresh / TASK_SOFT_DIRTY_LIMIT + 1);
 
 		period = HZ * pages_dirtied / ((unsigned long)bw + 1) + 1;
