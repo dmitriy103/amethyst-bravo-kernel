@@ -78,6 +78,7 @@ struct backing_dev_info {
 	unsigned long bw_time_stamp;
 	unsigned long written_stamp;
 	unsigned long write_bandwidth;
+	unsigned long throttle_bandwidth;
 
 	struct prop_local_percpu completions;
 	int dirty_exceeded;

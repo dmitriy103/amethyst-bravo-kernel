@@ -521,6 +521,45 @@ out:
 	return 1 + int_sqrt(dirty_thresh - dirty_pages);
 }
 
+/*
+ * The bdi throttle bandwidth is introduced for resisting bdi_dirty from
+ * getting too close to task_thresh. It allows scaling up to 1000+ concurrent
+ * dirtier tasks while keeping the fluctuation level flat.
+ */
+static void __bdi_update_throttle_bandwidth(struct backing_dev_info *bdi,
+					    unsigned long dirty,
+					    unsigned long thresh)
+{
+	unsigned long gap = thresh / TASK_SOFT_DIRTY_LIMIT + 1;
+	unsigned long bw = bdi->throttle_bandwidth;
+
+	if (dirty > thresh)
+		return;
+
+	/* adapt to concurrent dirtiers */
+	if (dirty > thresh - gap) {
+		bw -= bw >> (3 + 4 * (thresh - dirty) / gap);
+		goto out;
+	}
+
+	/* adapt to one single dirtier */
+	if (dirty > thresh - gap * 2 + gap / 4 &&
+	    bw > bdi->write_bandwidth + bdi->write_bandwidth / 2) {
+		bw -= bw >> (3 + 4 * (thresh - dirty - gap) / gap);
+		goto out;
+	}
+
+	if (dirty <= thresh - gap * 2 - gap / 2 &&
+	    bw < bdi->write_bandwidth - bdi->write_bandwidth / 2) {
+		bw += (bw >> 4) + 1;
+		goto out;
+	}
+
+	return;
+out:
+	bdi->throttle_bandwidth = bw;
+}
+
 static void __bdi_update_write_bandwidth(struct backing_dev_info *bdi,
 					 unsigned long elapsed,
 					 unsigned long written)
@@ -563,6 +602,7 @@ void bdi_update_bandwidth(struct backing_dev_info *bdi,
 		goto unlock;
 
 	__bdi_update_write_bandwidth(bdi, elapsed, written);
+	__bdi_update_throttle_bandwidth(bdi, bdi_dirty, bdi_thresh);
 
 snapshot:
 	bdi->written_stamp = written;
@@ -651,7 +691,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 		 * close to task_thresh, and help reduce fluctuations of pause
 		 * time when there are lots of dirtiers.
 		 */
-		bw = bdi->write_bandwidth;
+		bw = bdi->throttle_bandwidth;
 		bw = bw * (bdi_thresh - bdi_dirty);
 		do_div(bw, bdi_thresh / BDI_SOFT_DIRTY_LIMIT + 1);
 
