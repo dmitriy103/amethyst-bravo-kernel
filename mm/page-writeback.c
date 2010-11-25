@@ -659,6 +659,27 @@ static unsigned long max_pause(unsigned long bdi_thresh)
 }
 
 /*
+ * Scale up pause time for concurrent dirtiers in order to reduce CPU overheads.
+ * But ensure reasonably large [min_pause, max_pause] range size, so that
+ * nr_dirtied_pause (and hence future pause time) can stay reasonably stable.
+ */
+static unsigned long min_pause(struct backing_dev_info *bdi,
+			       unsigned long max)
+{
+	unsigned long hi = ilog2(bdi->write_bandwidth);
+	unsigned long lo = ilog2(bdi->throttle_bandwidth);
+	unsigned long t;  /* jiffies */
+
+	if (lo >= hi)
+		return 1;
+
+	/* (N * 10ms) on 2^N concurrent tasks */
+	t = (hi - lo) * (10 * HZ) / 1024;
+
+	return clamp_val(t, 1, max / 2);
+}
+
+/*
  * balance_dirty_pages() must be called by processes which are generating dirty
  * data.  It looks at the number of dirty pages in the machine and will force
  * the caller to perform writeback if the system is over `vm_dirty_ratio'.
@@ -798,7 +819,7 @@ pause:
 
 	if (pause == 0 && nr_dirty < background_thresh)
 		current->nr_dirtied_pause = ratelimit_pages(bdi);
-	else if (pause == 1)
+	else if (pause <= min_pause(bdi, pause_max))
 		current->nr_dirtied_pause += current->nr_dirtied_pause / 32 + 1;
 	else if (pause >= pause_max)
 		/*
