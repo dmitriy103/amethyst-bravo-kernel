@@ -29,6 +29,9 @@
 #include "nfs4_fs.h"
 #include "fscache.h"
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/nfs.h>
+
 #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
 
 #define MIN_POOL_WRITE		(32)
@@ -1513,11 +1516,14 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
 	ret = nfs_commit_inode(inode, flags);
 	if (ret >= 0) {
 		wbc->nr_to_write -= ret;
-		return 0;
+		goto out;
 	}
+
 out_mark_dirty:
 	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
-	return ret;
+out:
+	trace_nfs_commit_unstable_pages(inode, wbc, flags, ret);
+	return ret >= 0 ? 0 : ret;
 }
 #else
 static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_control *wbc)
