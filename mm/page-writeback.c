@@ -749,6 +749,9 @@ static void balance_dirty_pages(struct address_space *mapping,
 
 		bdi_update_bandwidth(bdi, start_time, bdi_dirty, bdi_thresh);
 
+		if (unlikely(!writeback_in_progress(bdi)))
+			bdi_start_background_writeback(bdi);
+
 		avg_dirty = bdi->avg_dirty;
 		if (avg_dirty < bdi_dirty || avg_dirty > task_thresh)
 			avg_dirty = bdi_dirty;
@@ -839,8 +842,10 @@ pause:
 	 * In normal mode, we start background writeout at the lower
 	 * background_thresh, to keep the amount of dirty memory low.
 	 */
-	if ((laptop_mode && dirty_exceeded) ||
-	    (!laptop_mode && (nr_reclaimable > background_thresh)))
+	if (laptop_mode)
+		return;
+
+	if (nr_reclaimable > background_thresh)
 		bdi_start_background_writeback(bdi);
 }
 
