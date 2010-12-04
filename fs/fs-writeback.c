@@ -749,6 +749,12 @@ static long wb_writeback(struct bdi_writeback *wb,
 		 * become available for writeback. Otherwise
 		 * we'll just busyloop.
 		 */
+		if (list_empty(&wb->b_more_io)) {
+			trace_wbc_writeback_wait(&wbc, wb->bdi);
+			__set_current_state(TASK_UNINTERRUPTIBLE);
+			io_schedule_timeout(max(HZ/100, 1));
+			continue;
+		}
 		spin_lock(&inode_lock);
 		if (!list_empty(&wb->b_more_io))  {
 			inode = wb_inode(wb->b_more_io.prev);
