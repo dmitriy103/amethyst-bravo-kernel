@@ -587,6 +587,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 	unsigned long background_thresh;
 	unsigned long dirty_thresh;
 	unsigned long bdi_thresh;
+	unsigned long task_thresh;
 	unsigned long long bw;
 	unsigned long period;
 	unsigned long pause = 0;
@@ -616,7 +617,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 			break;
 
 		bdi_thresh = bdi_dirty_limit(bdi, dirty_thresh, nr_dirty);
-		bdi_thresh = task_dirty_limit(current, bdi_thresh);
+		task_thresh = task_dirty_limit(current, bdi_thresh);
 
 		/*
 		 * In order to avoid the stacked BDI deadlock we need
@@ -638,14 +639,23 @@ static void balance_dirty_pages(struct address_space *mapping,
 
 		bdi_update_bandwidth(bdi, start_time, bdi_dirty, bdi_thresh);
 
-		if (bdi_dirty >= bdi_thresh || nr_dirty > dirty_thresh) {
+		if (bdi_dirty >= task_thresh || nr_dirty > dirty_thresh) {
 			pause = MAX_PAUSE;
 			goto pause;
 		}
 
+		/*
+		 * When bdi_dirty grows closer to bdi_thresh, it indicates more
+		 * concurrent dirtiers. Proportionally lower the max throttle
+		 * bandwidth. This will resist bdi_dirty from approaching to
+		 * close to task_thresh, and help reduce fluctuations of pause
+		 * time when there are lots of dirtiers.
+		 */
 		bw = bdi->write_bandwidth;
-
 		bw = bw * (bdi_thresh - bdi_dirty);
+		do_div(bw, bdi_thresh / BDI_SOFT_DIRTY_LIMIT + 1);
+
+		bw = bw * (task_thresh - bdi_dirty);
 		do_div(bw, bdi_thresh / TASK_SOFT_DIRTY_LIMIT + 1);
 
 		period = HZ * pages_dirtied / ((unsigned long)bw + 1) + 1;
