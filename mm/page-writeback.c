@@ -643,6 +643,22 @@ unlock:
 }
 
 /*
+ * Limit pause time for small memory systems. If sleeping for too long time,
+ * the small pool of dirty/writeback pages may go empty and disk go idle.
+ */
+static unsigned long max_pause(unsigned long bdi_thresh)
+{
+	unsigned long t;  /* jiffies */
+
+	/* 1ms for every 4MB */
+	t = bdi_thresh >> (32 - PAGE_CACHE_SHIFT -
+			   ilog2(roundup_pow_of_two(HZ)));
+	t += 2;
+
+	return min_t(unsigned long, t, MAX_PAUSE);
+}
+
+/*
  * balance_dirty_pages() must be called by processes which are generating dirty
  * data.  It looks at the number of dirty pages in the machine and will force
  * the caller to perform writeback if the system is over `vm_dirty_ratio'.
@@ -663,6 +679,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 	unsigned long long bw;
 	unsigned long period;
 	unsigned long pause = 0;
+	unsigned long pause_max;
 	bool dirty_exceeded = false;
 	struct backing_dev_info *bdi = mapping->backing_dev_info;
 	unsigned long start_time = jiffies;
@@ -715,8 +732,10 @@ static void balance_dirty_pages(struct address_space *mapping,
 		if (avg_dirty < bdi_dirty || avg_dirty > task_thresh)
 			avg_dirty = bdi_dirty;
 
+		pause_max = max_pause(bdi_thresh);
+
 		if (avg_dirty >= task_thresh || nr_dirty > dirty_thresh) {
-			pause = MAX_PAUSE;
+			pause = pause_max;
 			goto pause;
 		}
 
@@ -750,7 +769,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 			pause = 1;
 			break;
 		}
-		pause = clamp_val(pause, 1, MAX_PAUSE);
+		pause = clamp_val(pause, 1, pause_max);
 
 pause:
 		current->paused_when = jiffies;
@@ -781,7 +800,7 @@ pause:
 		current->nr_dirtied_pause = ratelimit_pages(bdi);
 	else if (pause == 1)
 		current->nr_dirtied_pause += current->nr_dirtied_pause / 32 + 1;
-	else if (pause >= MAX_PAUSE)
+	else if (pause >= pause_max)
 		/*
 		 * when repeated, writing 1 page per 100ms on slow devices,
 		 * i-(i+2)/4 will be able to reach 1 but never reduce to 0.
