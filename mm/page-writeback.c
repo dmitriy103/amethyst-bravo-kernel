@@ -415,6 +415,7 @@ void global_dirty_limits(unsigned long *pbackground, unsigned long *pdirty)
 	*pdirty = dirty;
 	trace_global_dirty_state(background, dirty);
 }
+EXPORT_SYMBOL_GPL(global_dirty_limits);
 
 /**
  * bdi_dirty_limit - @bdi's share of dirty throttling threshold
