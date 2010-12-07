@@ -149,6 +149,63 @@ DEFINE_WBC_EVENT(wbc_writeback_written);
 DEFINE_WBC_EVENT(wbc_writeback_wait);
 DEFINE_WBC_EVENT(wbc_writepage);
 
+TRACE_EVENT(balance_dirty_state,
+
+	TP_PROTO(struct address_space *mapping,
+		 unsigned long nr_dirty,
+		 unsigned long nr_writeback,
+		 unsigned long nr_unstable,
+		 unsigned long background_thresh,
+		 unsigned long dirty_thresh
+	),
+
+	TP_ARGS(mapping,
+		nr_dirty,
+		nr_writeback,
+		nr_unstable,
+		background_thresh,
+		dirty_thresh
+	),
+
+	TP_STRUCT__entry(
+		__array(char,		bdi, 32)
+		__field(unsigned long,	ino)
+		__field(unsigned long,	nr_dirty)
+		__field(unsigned long,	nr_writeback)
+		__field(unsigned long,	nr_unstable)
+		__field(unsigned long,	background_thresh)
+		__field(unsigned long,	dirty_thresh)
+		__field(unsigned long,	task_dirtied_pause)
+	),
+
+	TP_fast_assign(
+		strlcpy(__entry->bdi,
+			dev_name(mapping->backing_dev_info->dev), 32);
+		__entry->ino			= mapping->host->i_ino;
+		__entry->nr_dirty		= nr_dirty;
+		__entry->nr_writeback		= nr_writeback;
+		__entry->nr_unstable		= nr_unstable;
+		__entry->background_thresh	= background_thresh;
+		__entry->dirty_thresh		= dirty_thresh;
+		__entry->task_dirtied_pause	= current->nr_dirtied_pause;
+	),
+
+	TP_printk("bdi %s: dirty=%lu wb=%lu unstable=%lu "
+		  "bg_thresh=%lu thresh=%lu gap=%ld "
+		  "poll_thresh=%lu ino=%lu",
+		  __entry->bdi,
+		  __entry->nr_dirty,
+		  __entry->nr_writeback,
+		  __entry->nr_unstable,
+		  __entry->background_thresh,
+		  __entry->dirty_thresh,
+		  __entry->dirty_thresh - __entry->nr_dirty -
+		  __entry->nr_writeback - __entry->nr_unstable,
+		  __entry->task_dirtied_pause,
+		  __entry->ino
+	)
+);
+
 #define KBps(x)			((x) << (PAGE_SHIFT - 10))
 #define BDP_PERCENT(a, b, c)	(((__entry->a) - (__entry->b)) * 100 * (c) + \
 				  __entry->bdi_limit/2) / (__entry->bdi_limit|1)
