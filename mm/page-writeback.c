@@ -386,6 +386,7 @@ void global_dirty_limits(unsigned long *pbackground, unsigned long *pdirty)
 	tsk = current;
 	*pbackground = background;
 	*pdirty = dirty;
+	trace_global_dirty_state(background, dirty);
 }
 EXPORT_SYMBOL_GPL(global_dirty_limits);
 
