@@ -1492,9 +1492,10 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
 
 	if (wbc->sync_mode == WB_SYNC_NONE) {
 		/* Don't commit yet if this is a non-blocking flush and there
-		 * are a lot of outstanding writes for this mapping.
+		 * are a lot of outstanding writes for this mapping, until
+		 * collected enough pages to commit.
 		 */
-		if (nfsi->ncommit <= (nfsi->npages >> 1))
+		if (nfsi->ncommit <= nfsi->npages / TASK_SOFT_DIRTY_LIMIT)
 			goto out_mark_dirty;
 
 		/* don't wait for the COMMIT response */
