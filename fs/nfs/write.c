@@ -1503,12 +1503,7 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
 
 	ret = nfs_commit_inode(inode, flags);
 	if (ret >= 0) {
-		if (wbc->sync_mode == WB_SYNC_NONE) {
-			if (ret < wbc->nr_to_write)
-				wbc->nr_to_write -= ret;
-			else
-				wbc->nr_to_write = 0;
-		}
+		wbc->nr_to_write -= ret;
 		return 0;
 	}
 out_mark_dirty:
