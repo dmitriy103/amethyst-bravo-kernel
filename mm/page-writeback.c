@@ -749,6 +749,17 @@ static void balance_dirty_pages(struct address_space *mapping,
 		if (unlikely(!writeback_in_progress(bdi)))
 			bdi_start_background_writeback(bdi);
 
+		/*
+		 * The bdi thresh is somehow "soft" limit derived from the
+		 * global "hard" limit. The former helps to prevent heavy IO
+		 * bdi or process from holding back light ones; The latter is
+		 * the last resort safeguard.
+		 */
+		dirty_exceeded = bdi_dirty > bdi_thresh ||
+				  nr_dirty > dirty_thresh;
+		if (dirty_exceeded && !bdi->dirty_exceeded)
+			bdi->dirty_exceeded = 1;
+
 		avg_dirty = bdi->avg_dirty;
 		if (avg_dirty < bdi_dirty || avg_dirty > task_thresh)
 			avg_dirty = bdi_dirty;
@@ -818,20 +829,8 @@ pause:
 		io_schedule_timeout(pause);
 		current->paused_when += pause;
 
-		/*
-		 * The bdi thresh is somehow "soft" limit derived from the
-		 * global "hard" limit. The former helps to prevent heavy IO
-		 * bdi or process from holding back light ones; The latter is
-		 * the last resort safeguard.
-		 */
-		dirty_exceeded = (bdi_dirty > bdi_thresh) ||
-				  (nr_dirty > dirty_thresh);
-
 		if (!dirty_exceeded)
 			break;
-
-		if (!bdi->dirty_exceeded)
-			bdi->dirty_exceeded = 1;
 	}
 
 	if (!dirty_exceeded && bdi->dirty_exceeded)
