@@ -149,60 +149,41 @@ DEFINE_WBC_EVENT(wbc_writeback_written);
 DEFINE_WBC_EVENT(wbc_writeback_wait);
 DEFINE_WBC_EVENT(wbc_writepage);
 
-TRACE_EVENT(balance_dirty_state,
+TRACE_EVENT(global_dirty_state,
 
-	TP_PROTO(struct address_space *mapping,
-		 unsigned long nr_dirty,
-		 unsigned long nr_writeback,
-		 unsigned long nr_unstable,
-		 unsigned long background_thresh,
+	TP_PROTO(unsigned long background_thresh,
 		 unsigned long dirty_thresh
 	),
 
-	TP_ARGS(mapping,
-		nr_dirty,
-		nr_writeback,
-		nr_unstable,
-		background_thresh,
+	TP_ARGS(background_thresh,
 		dirty_thresh
 	),
 
 	TP_STRUCT__entry(
-		__array(char,		bdi, 32)
-		__field(unsigned long,	ino)
 		__field(unsigned long,	nr_dirty)
 		__field(unsigned long,	nr_writeback)
 		__field(unsigned long,	nr_unstable)
 		__field(unsigned long,	background_thresh)
 		__field(unsigned long,	dirty_thresh)
-		__field(unsigned long,	task_dirtied_pause)
 	),
 
 	TP_fast_assign(
-		strlcpy(__entry->bdi,
-			dev_name(mapping->backing_dev_info->dev), 32);
-		__entry->ino			= mapping->host->i_ino;
-		__entry->nr_dirty		= nr_dirty;
-		__entry->nr_writeback		= nr_writeback;
-		__entry->nr_unstable		= nr_unstable;
+		__entry->nr_dirty	= global_page_state(NR_FILE_DIRTY);
+		__entry->nr_writeback	= global_page_state(NR_WRITEBACK);
+		__entry->nr_unstable	= global_page_state(NR_UNSTABLE_NFS);
 		__entry->background_thresh	= background_thresh;
 		__entry->dirty_thresh		= dirty_thresh;
-		__entry->task_dirtied_pause	= current->nr_dirtied_pause;
 	),
 
-	TP_printk("bdi %s: dirty=%lu wb=%lu unstable=%lu "
-		  "bg_thresh=%lu thresh=%lu gap=%ld "
-		  "poll_thresh=%lu ino=%lu",
-		  __entry->bdi,
+	TP_printk("dirty=%lu writeback=%lu unstable=%lu "
+		  "bg_thresh=%lu thresh=%lu gap=%ld",
 		  __entry->nr_dirty,
 		  __entry->nr_writeback,
 		  __entry->nr_unstable,
 		  __entry->background_thresh,
 		  __entry->dirty_thresh,
 		  __entry->dirty_thresh - __entry->nr_dirty -
-		  __entry->nr_writeback - __entry->nr_unstable,
-		  __entry->task_dirtied_pause,
-		  __entry->ino
+		  __entry->nr_writeback - __entry->nr_unstable
 	)
 );
 

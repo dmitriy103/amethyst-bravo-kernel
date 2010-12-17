@@ -413,6 +413,7 @@ void global_dirty_limits(unsigned long *pbackground, unsigned long *pdirty)
 	}
 	*pbackground = background;
 	*pdirty = dirty;
+	trace_global_dirty_state(background, dirty);
 }
 
 /**
@@ -707,20 +708,11 @@ static void balance_dirty_pages(struct address_space *mapping,
 		 * written to the server's write cache, but has not yet
 		 * been flushed to permanent storage.
 		 */
-		nr_reclaimable = global_page_state(NR_FILE_DIRTY);
-		bdi_dirty = global_page_state(NR_UNSTABLE_NFS);
-		nr_dirty = global_page_state(NR_WRITEBACK);
+		nr_reclaimable = global_page_state(NR_FILE_DIRTY) +
+					global_page_state(NR_UNSTABLE_NFS);
+		nr_dirty = nr_reclaimable + global_page_state(NR_WRITEBACK);
 
 		global_dirty_limits(&background_thresh, &dirty_thresh);
-
-		trace_balance_dirty_state(mapping,
-					  nr_reclaimable,
-					  nr_dirty,
-					  bdi_dirty,
-					  background_thresh,
-					  dirty_thresh);
-		nr_reclaimable += bdi_dirty;
-		nr_dirty += nr_reclaimable;
 
 		/*
 		 * Throttle it only when the background writeback cannot
