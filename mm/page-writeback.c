@@ -804,7 +804,8 @@ static void balance_dirty_pages(struct address_space *mapping,
 						  pages_dirtied,
 						  bw,
 						  period,
-						  pause);
+						  pause,
+						  start_time);
 			if (-pause <= HZ/10)
 				current->paused_when += period;
 			else
@@ -823,7 +824,8 @@ pause:
 					  pages_dirtied,
 					  bw,
 					  period,
-					  pause);
+					  pause,
+					  start_time);
 		current->paused_when = jiffies;
 		__set_current_state(TASK_UNINTERRUPTIBLE);
 		io_schedule_timeout(pause);
