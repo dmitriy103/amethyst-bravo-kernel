@@ -1368,7 +1368,8 @@ static void do_tx_routing(uint32_t device_id, uint32_t acdb_id)
 {
 	if (device_id == audio_tx_device_id) {
 		if (acdb_id != tx_acdb) {
-			qdsp6_devchg_notify(ac_control, ADSP_AUDIO_TX_DEVICE, device_id);
+			qdsp6_devchg_notify(ac_control, ADSP_AUDIO_TX_DEVICE,
+						device_id);
 			audio_update_acdb(device_id, acdb_id);
 			qdsp6_standby(ac_control);
 			qdsp6_start(ac_control);
