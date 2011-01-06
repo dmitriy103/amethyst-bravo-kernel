@@ -1558,6 +1558,7 @@ static inline int iso_task(struct task_struct *p)
 	return (p->policy == SCHED_ISO);
 }
 extern void remove_cpu(unsigned long cpu);
+extern int above_background_load(void);
 #else /* CFS */
 extern int runqueue_is_locked(int cpu);
 #define tsk_seruntime(t)	((t)->se.sum_exec_runtime)
@@ -1580,6 +1581,12 @@ static inline int iso_task(struct task_struct *p)
 
 static inline void remove_cpu(unsigned long cpu)
 {
+}
+
+/* Anyone feel like implementing this? */
+static inline int above_background_load(void)
+{
+	return 1;
 }
 #endif /* CONFIG_SCHED_BFS */
 
