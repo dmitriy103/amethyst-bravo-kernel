@@ -514,6 +514,8 @@ struct thread_group_cputimer {
 	spinlock_t lock;
 };
 
+struct autogroup;
+
 /*
  * NOTE! "signal_struct" does not have it's own
  * locking, because a shared signal_struct always
@@ -581,6 +583,9 @@ struct signal_struct {
 
 	struct tty_struct *tty; /* NULL if no tty */
 
+#ifdef CONFIG_SCHED_AUTOGROUP
+	struct autogroup *autogroup;
+#endif
 	/*
 	 * Cumulative resource counters for dead threads in the group,
 	 * and for reaped dead child processes forked by this group.
@@ -1037,14 +1042,19 @@ struct sched_domain;
 /*
  * wake flags
  */
-#define WF_SYNC		0x01		/* waker goes to sleep after wakup */
-#define WF_FORK		0x02		/* child wakeup after fork */
+#define WF_SYNC		(1 << 0)	/* waker goes to sleep after wakup */
+#define WF_FORK		(1 << 1)	/* child wakeup after fork */
+#define WF_INTERACTIVE	(1 << 2)	/* interactivity-driven wakeup */
+#define WF_TIMER	(1 << 3)	/* timer-driven wakeup */
 
-#define ENQUEUE_WAKEUP		1
-#define ENQUEUE_WAKING		2
-#define ENQUEUE_HEAD		4
+#define ENQUEUE_WAKEUP	(1 << 0)
+#define ENQUEUE_WAKING	(1 << 1)
+#define ENQUEUE_HEAD	(1 << 2)
+#define ENQUEUE_IO	(1 << 3)
+#define ENQUEUE_LATENCY	(1 << 4)
+#define ENQUEUE_TIMER	(1 << 5)
 
-#define DEQUEUE_SLEEP		1
+#define DEQUEUE_SLEEP	(1 << 0)
 
 struct sched_class {
 	const struct sched_class *next;
@@ -1137,7 +1147,10 @@ struct sched_entity {
 	struct load_weight	load;		/* for load-balancing */
 	struct rb_node		run_node;
 	struct list_head	group_node;
-	unsigned int		on_rq;
+	unsigned int		on_rq:1,
+				interactive:1,
+				timer:1,
+				fork_expedited:1;
 
 	u64			exec_start;
 	u64			sum_exec_runtime;
@@ -1269,11 +1282,12 @@ struct task_struct {
 	unsigned did_exec:1;
 	unsigned in_execve:1;	/* Tell the LSMs that the process is doing an
 				 * execve */
-	unsigned in_iowait:1;
 
-
-	/* Revert to default priority/policy when forking */
-	unsigned sched_reset_on_fork:1;
+	unsigned sched_in_iowait:1;		/* Called io_schedule() */
+	unsigned sched_reset_on_fork:1;		/* Revert to default
+						 * priority/policy on fork */
+	unsigned sched_wake_interactive:4;	/* User-driven wakeup */
+	unsigned sched_wake_timer:4;		/* Timer-driven wakeup */
 
 	pid_t pid;
 	pid_t tgid;
@@ -1535,6 +1549,27 @@ struct task_struct {
 	} memcg_batch;
 #endif
 };
+
+static inline void sched_wake_interactive_enable(void)
+{
+	current->sched_wake_interactive++;
+}
+
+static inline void sched_wake_interactive_disable(void)
+{
+	current->sched_wake_interactive--;
+}
+
+static inline void sched_wake_timer_enable(void)
+{
+	current->sched_wake_timer++;
+}
+
+static inline void sched_wake_timer_disable(void)
+{
+	current->sched_wake_timer--;
+}
+
 
 #ifdef CONFIG_SCHED_BFS
 extern int grunqueue_is_locked(void);
@@ -2016,6 +2051,24 @@ int sched_rt_handler(struct ctl_table *table, int write,
 		loff_t *ppos);
 
 extern unsigned int sysctl_sched_compat_yield;
+
+#ifdef CONFIG_SCHED_AUTOGROUP
+extern unsigned int sysctl_sched_autogroup_enabled;
+
+extern void sched_autogroup_create_attach(struct task_struct *p);
+extern void sched_autogroup_detach(struct task_struct *p);
+extern void sched_autogroup_fork(struct signal_struct *sig);
+extern void sched_autogroup_exit(struct signal_struct *sig);
+#ifdef CONFIG_PROC_FS
+extern void proc_sched_autogroup_show_task(struct task_struct *p, struct seq_file *m);
+extern int proc_sched_autogroup_set_nice(struct task_struct *p, int *nice);
+#endif
+#else
+static inline void sched_autogroup_create_attach(struct task_struct *p) { }
+static inline void sched_autogroup_detach(struct task_struct *p) { }
+static inline void sched_autogroup_fork(struct signal_struct *sig) { }
+static inline void sched_autogroup_exit(struct signal_struct *sig) { }
+#endif
 
 #ifdef CONFIG_RT_MUTEXES
 extern int rt_mutex_getprio(struct task_struct *p);

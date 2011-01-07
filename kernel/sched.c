@@ -81,6 +81,7 @@
 
 #include "sched_cpupri.h"
 #include "workqueue_sched.h"
+#include "sched_autogroup.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
@@ -271,6 +272,10 @@ struct task_group {
 	struct task_group *parent;
 	struct list_head siblings;
 	struct list_head children;
+
+#ifdef CONFIG_SCHED_AUTOGROUP
+	struct autogroup *autogroup;
+#endif
 };
 
 #define root_task_group init_task_group
@@ -608,11 +613,14 @@ static inline int cpu_of(struct rq *rq)
  */
 static inline struct task_group *task_group(struct task_struct *p)
 {
+	struct task_group *tg;
 	struct cgroup_subsys_state *css;
 
 	css = task_subsys_state_check(p, cpu_cgroup_subsys_id,
 			lockdep_is_held(&task_rq(p)->lock));
-	return container_of(css, struct task_group, css);
+	tg = container_of(css, struct task_group, css);
+
+	return autogroup_task_group(p, tg);
 }
 
 /* Change a task's cfs_rq and parent entity if it moves across CPUs/groups */
@@ -2066,6 +2074,7 @@ static void update_rq_clock_task(struct rq *rq, s64 delta)
 #include "sched_idletask.c"
 #include "sched_fair.c"
 #include "sched_rt.c"
+#include "sched_autogroup.c"
 #include "sched_stoptask.c"
 #ifdef CONFIG_SCHED_DEBUG
 # include "sched_debug.c"
@@ -2557,6 +2566,20 @@ static int try_to_wake_up(struct task_struct *p, unsigned int state,
 	unsigned long en_flags = ENQUEUE_WAKEUP;
 	struct rq *rq;
 
+	if (sched_feat(INTERACTIVE) && !(wake_flags & WF_FORK)) {
+		if (current->sched_wake_interactive ||
+				wake_flags & WF_INTERACTIVE ||
+				current->se.interactive)
+			en_flags |= ENQUEUE_LATENCY;
+	}
+
+	if (sched_feat(TIMER) && !(wake_flags & WF_FORK)) {
+		if (current->sched_wake_timer ||
+				wake_flags & WF_TIMER ||
+				current->se.timer)
+			en_flags |= ENQUEUE_TIMER;
+	}
+
 	this_cpu = get_cpu();
 
 	smp_wmb();
@@ -2762,6 +2785,14 @@ void sched_fork(struct task_struct *p, int clone_flags)
 
 	if (!rt_prio(p->prio))
 		p->sched_class = &fair_sched_class;
+
+	if ((sched_feat(INTERACTIVE_FORK_EXPEDITED)
+	     && (current->sched_wake_interactive || current->se.interactive))
+	    || (sched_feat(TIMER_FORK_EXPEDITED)
+	     && (current->sched_wake_timer || current->se.timer)))
+		p->se.fork_expedited = 1;
+	else
+		p->se.fork_expedited = 0;
 
 	if (p->sched_class->task_fork)
 		p->sched_class->task_fork(p);
@@ -4096,6 +4127,11 @@ need_resched_nonpreemptible:
 		if (unlikely(signal_pending_state(prev->state, prev))) {
 			prev->state = TASK_RUNNING;
 		} else {
+			if (sched_feat(INTERACTIVE))
+				prev->se.interactive = 0;
+			if (sched_feat(TIMER))
+				prev->se.timer = 0;
+
 			/*
 			 * If a worker is going to sleep, notify and
 			 * ask workqueue whether it wants to wake up a
@@ -5468,9 +5504,9 @@ void __sched io_schedule(void)
 
 	delayacct_blkio_start();
 	atomic_inc(&rq->nr_iowait);
-	current->in_iowait = 1;
+	current->sched_in_iowait = 1;
 	schedule();
-	current->in_iowait = 0;
+	current->sched_in_iowait = 0;
 	atomic_dec(&rq->nr_iowait);
 	delayacct_blkio_end();
 }
@@ -5483,9 +5519,9 @@ long __sched io_schedule_timeout(long timeout)
 
 	delayacct_blkio_start();
 	atomic_inc(&rq->nr_iowait);
-	current->in_iowait = 1;
+	current->sched_in_iowait = 1;
 	ret = schedule_timeout(timeout);
-	current->in_iowait = 0;
+	current->sched_in_iowait = 0;
 	atomic_dec(&rq->nr_iowait);
 	delayacct_blkio_end();
 	return ret;
@@ -8167,7 +8203,7 @@ void __init sched_init(void)
 #ifdef CONFIG_CGROUP_SCHED
 	list_add(&init_task_group.list, &task_groups);
 	INIT_LIST_HEAD(&init_task_group.children);
-
+	autogroup_init(&init_task);
 #endif /* CONFIG_CGROUP_SCHED */
 
 #if defined CONFIG_FAIR_GROUP_SCHED && defined CONFIG_SMP
