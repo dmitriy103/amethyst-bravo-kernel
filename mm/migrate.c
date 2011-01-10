@@ -639,6 +639,19 @@ static int unmap_and_move(new_page_t get_new_page, unsigned long private,
 	if (!trylock_page(page)) {
 		if (!force || !sync)
 			goto move_newpage;
+
+		/*
+		 * During page readahead, pages are added locked to the LRU
+		 * and marked up to date when the IO completes. As part of
+		 * readahead, a process can reload the radix tree, enter
+		 * page reclamation, direct compaction and migrate page.
+		 * Hence, during readahead, a process can end up trying to
+		 * lock the same page twice leading to deadlock. Avoid this
+		 * situation.
+		 */
+		if (PageMappedToDisk(page) && !PageUptodate(page))
+			goto move_newpage;
+
 		lock_page(page);
 	}
 
