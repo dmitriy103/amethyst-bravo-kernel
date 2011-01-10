@@ -2566,20 +2566,6 @@ static int try_to_wake_up(struct task_struct *p, unsigned int state,
 	unsigned long en_flags = ENQUEUE_WAKEUP;
 	struct rq *rq;
 
-	if (sched_feat(INTERACTIVE) && !(wake_flags & WF_FORK)) {
-		if (current->sched_wake_interactive ||
-				wake_flags & WF_INTERACTIVE ||
-				current->se.interactive)
-			en_flags |= ENQUEUE_LATENCY;
-	}
-
-	if (sched_feat(TIMER) && !(wake_flags & WF_FORK)) {
-		if (current->sched_wake_timer ||
-				wake_flags & WF_TIMER ||
-				current->se.timer)
-			en_flags |= ENQUEUE_TIMER;
-	}
-
 	this_cpu = get_cpu();
 
 	smp_wmb();
@@ -2785,14 +2771,6 @@ void sched_fork(struct task_struct *p, int clone_flags)
 
 	if (!rt_prio(p->prio))
 		p->sched_class = &fair_sched_class;
-
-	if ((sched_feat(INTERACTIVE_FORK_EXPEDITED)
-	     && (current->sched_wake_interactive || current->se.interactive))
-	    || (sched_feat(TIMER_FORK_EXPEDITED)
-	     && (current->sched_wake_timer || current->se.timer)))
-		p->se.fork_expedited = 1;
-	else
-		p->se.fork_expedited = 0;
 
 	if (p->sched_class->task_fork)
 		p->sched_class->task_fork(p);
@@ -4127,11 +4105,6 @@ need_resched_nonpreemptible:
 		if (unlikely(signal_pending_state(prev->state, prev))) {
 			prev->state = TASK_RUNNING;
 		} else {
-			if (sched_feat(INTERACTIVE))
-				prev->se.interactive = 0;
-			if (sched_feat(TIMER))
-				prev->se.timer = 0;
-
 			/*
 			 * If a worker is going to sleep, notify and
 			 * ask workqueue whether it wants to wake up a
@@ -5504,9 +5477,9 @@ void __sched io_schedule(void)
 
 	delayacct_blkio_start();
 	atomic_inc(&rq->nr_iowait);
-	current->sched_in_iowait = 1;
+	current->in_iowait = 1;
 	schedule();
-	current->sched_in_iowait = 0;
+	current->in_iowait = 0;
 	atomic_dec(&rq->nr_iowait);
 	delayacct_blkio_end();
 }
@@ -5519,9 +5492,9 @@ long __sched io_schedule_timeout(long timeout)
 
 	delayacct_blkio_start();
 	atomic_inc(&rq->nr_iowait);
-	current->sched_in_iowait = 1;
+	current->in_iowait = 1;
 	ret = schedule_timeout(timeout);
-	current->sched_in_iowait = 0;
+	current->in_iowait = 0;
 	atomic_dec(&rq->nr_iowait);
 	delayacct_blkio_end();
 	return ret;
