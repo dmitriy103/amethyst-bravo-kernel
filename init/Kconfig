@@ -868,6 +868,7 @@ endif # NAMESPACES
 
 config SCHED_AUTOGROUP
 	bool "Automatic process group scheduling"
+	depends on SCHED_CFS
 	select EVENTFD
 	select CGROUPS
 	select CGROUP_SCHED
