@@ -33,7 +33,17 @@ struct compact_control {
 	unsigned long nr_migratepages;	/* Number of pages to migrate */
 	unsigned long free_pfn;		/* isolate_freepages search base */
 	unsigned long migrate_pfn;	/* isolate_migratepages search base */
+<<<<<<< HEAD
 	bool sync;			/* Synchronous migration */
+=======
+	bool migrate_fast_scan;		/* If true, only MIGRATE_MOVABLE blocks
+					 * are scanned for pages to migrate and
+					 * migration is asynchronous
+					 */
+	unsigned long abort_migrate_pfn;/* Finish compaction when the migration
+					 * scanner reaches this PFN
+					 */
+>>>>>>> upstream-zen/compaction-2.6.37
 
 	/* Account for isolated anon and file pages */
 	unsigned long nr_anon;
@@ -283,6 +293,7 @@ static unsigned long isolate_migratepages(struct zone *zone,
 		if (PageBuddy(page))
 			continue;
 
+<<<<<<< HEAD
 		/*
 		 * For async migration, also only scan in MOVABLE blocks. Async
 		 * migration is optimistic to see if the minimum amount of work
@@ -290,6 +301,12 @@ static unsigned long isolate_migratepages(struct zone *zone,
 		 */
 		pageblock_nr = low_pfn >> pageblock_order;
 		if (!cc->sync && last_pageblock_nr != pageblock_nr &&
+=======
+		/* When fast scanning, only scan in MOVABLE blocks */
+		pageblock_nr = low_pfn >> pageblock_order;
+		if (cc->migrate_fast_scan &&
+				last_pageblock_nr != pageblock_nr &&
+>>>>>>> upstream-zen/compaction-2.6.37
 				get_pageblock_migratetype(page) != MIGRATE_MOVABLE) {
 			low_pfn += pageblock_nr_pages;
 			low_pfn = ALIGN(low_pfn, pageblock_nr_pages) - 1;
@@ -297,6 +314,7 @@ static unsigned long isolate_migratepages(struct zone *zone,
 			continue;
 		}
 
+<<<<<<< HEAD
 		if (!PageLRU(page))
 			continue;
 
@@ -310,6 +328,8 @@ static unsigned long isolate_migratepages(struct zone *zone,
 			continue;
 		}
 
+=======
+>>>>>>> upstream-zen/compaction-2.6.37
 		/* Try isolate the page */
 		if (__isolate_lru_page(page, ISOLATE_BOTH, 0) != 0)
 			continue;
@@ -396,6 +416,10 @@ static int compact_finished(struct zone *zone,
 	if (cc->free_pfn <= cc->migrate_pfn)
 		return COMPACT_COMPLETE;
 
+	/* Compaction run completes if migration reaches abort_migrate_pfn */
+	if (cc->abort_migrate_pfn && cc->migrate_pfn >= cc->abort_migrate_pfn)
+		return COMPACT_COMPLETE;
+
 	/* Compaction run is not finished if the watermark is not met */
 	if (cc->compact_mode != COMPACT_MODE_KSWAPD)
 		watermark = low_wmark_pages(zone);
@@ -432,6 +456,7 @@ static int compact_finished(struct zone *zone,
 	return COMPACT_CONTINUE;
 }
 
+<<<<<<< HEAD
 /*
  * compaction_suitable: Is this suitable to run compaction on this zone now?
  * Returns
@@ -440,6 +465,9 @@ static int compact_finished(struct zone *zone,
  *   COMPACT_CONTINUE - If compaction should run now
  */
 unsigned long compaction_suitable(struct zone *zone, int order)
+=======
+static unsigned long compaction_suitable(struct zone *zone, int order)
+>>>>>>> upstream-zen/compaction-2.6.37
 {
 	int fragindex;
 	unsigned long watermark;
@@ -488,10 +516,24 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 		;
 	}
 
+<<<<<<< HEAD
 	/* Setup to move all movable pages to the end of the zone */
 	cc->migrate_pfn = zone->zone_start_pfn;
 	cc->free_pfn = cc->migrate_pfn + zone->spanned_pages;
 	cc->free_pfn &= ~(pageblock_nr_pages-1);
+=======
+	/*
+	 * Setup to move all movable pages to the end of the zone. If the
+	 * caller does not specify starting points for the scanners,
+	 * initialise them
+	 */
+	if (!cc->migrate_pfn)
+		cc->migrate_pfn = zone->zone_start_pfn;
+	if (!cc->free_pfn) {
+		cc->free_pfn = zone->zone_start_pfn + zone->spanned_pages;
+		cc->free_pfn &= ~(pageblock_nr_pages-1);
+	}
+>>>>>>> upstream-zen/compaction-2.6.37
 
 	migrate_prep_local();
 
@@ -504,7 +546,11 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 		nr_migrate = cc->nr_migratepages;
 		migrate_pages(&cc->migratepages, compaction_alloc,
 				(unsigned long)cc, false,
+<<<<<<< HEAD
 				cc->sync);
+=======
+				cc->migrate_fast_scan ? false : true);
+>>>>>>> upstream-zen/compaction-2.6.37
 		update_nr_listpages(cc);
 		nr_remaining = cc->nr_migratepages;
 
@@ -540,6 +586,7 @@ unsigned long compact_zone_order(struct zone *zone,
 		.nr_migratepages = 0,
 		.order = order,
 		.migratetype = allocflags_to_migratetype(gfp_mask),
+		.migrate_fast_scan = true,
 		.zone = zone,
 		.sync = sync,
 		.compact_mode = compact_mode,
@@ -548,6 +595,41 @@ unsigned long compact_zone_order(struct zone *zone,
 	INIT_LIST_HEAD(&cc.migratepages);
 
 	return compact_zone(zone, &cc);
+}
+
+unsigned long reclaimcompact_zone_order(struct zone *zone,
+						int order, gfp_t gfp_mask)
+{
+	unsigned long start_migrate_pfn, ret;
+	struct page *anon_page, *file_page;
+	struct compact_control cc = {
+		.nr_freepages = 0,
+		.nr_migratepages = 0,
+		.order = order,
+		.migratetype = allocflags_to_migratetype(gfp_mask),
+		.migrate_fast_scan = false,
+		.zone = zone,
+	};
+	INIT_LIST_HEAD(&cc.freepages);
+	INIT_LIST_HEAD(&cc.migratepages);
+
+	/* Get a hint on where to start compacting from the LRU */
+	anon_page = lru_to_page(&zone->lru[LRU_BASE + LRU_INACTIVE_ANON].list);
+	file_page = lru_to_page(&zone->lru[LRU_BASE + LRU_INACTIVE_FILE].list);
+	cc.migrate_pfn = min(page_to_pfn(anon_page), page_to_pfn(file_page));
+	cc.migrate_pfn = ALIGN(cc.migrate_pfn, pageblock_nr_pages);
+	start_migrate_pfn = cc.migrate_pfn;
+
+	ret = compact_zone(zone, &cc);
+
+	/* Restart migration from the start of zone if the hint did not work */
+	if (!zone_watermark_ok(zone, cc.order, low_wmark_pages(zone), 0, 0)) {
+		cc.migrate_pfn = 0;
+		cc.abort_migrate_pfn = start_migrate_pfn;
+		ret = compact_zone(zone, &cc);
+	}
+
+	return ret;
 }
 
 int sysctl_extfrag_threshold = 500;
@@ -588,8 +670,12 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 								nodemask) {
 		int status;
 
+<<<<<<< HEAD
 		status = compact_zone_order(zone, order, gfp_mask, sync,
 					    COMPACT_MODE_DIRECT_RECLAIM);
+=======
+		status = compact_zone_order(zone, order, gfp_mask);
+>>>>>>> upstream-zen/compaction-2.6.37
 		rc = max(status, rc);
 
 		/* If a normal allocation would succeed, stop compacting */

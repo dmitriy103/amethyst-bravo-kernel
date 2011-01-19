@@ -114,8 +114,6 @@ struct scan_control {
 	nodemask_t	*nodemask;
 };
 
-#define lru_to_page(_head) (list_entry((_head)->prev, struct page, lru))
-
 #ifdef ARCH_HAS_PREFETCH
 #define prefetch_prev_lru_page(_page, _base, _field)			\
 	do {								\
@@ -291,9 +289,9 @@ static void set_reclaim_mode(int priority, struct scan_control *sc,
 	reclaim_mode syncmode = sync ? RECLAIM_MODE_SYNC : RECLAIM_MODE_ASYNC;
 
 	/*
-	 * Initially assume we are entering either lumpy reclaim or
-	 * reclaim/compaction.Depending on the order, we will either set the
-	 * sync mode or just reclaim order-0 pages later.
+	 * Initially assume we are entering either lumpy reclaim or lumpy
+	 * compaction. Depending on the order, we will either set the sync
+	 * mode or just reclaim order-0 pages later.
 	 */
 	if (COMPACTION_BUILD)
 		sc->reclaim_mode = RECLAIM_MODE_COMPACTION;
@@ -1391,6 +1389,13 @@ shrink_inactive_list(unsigned long nr_to_scan, struct zone *zone,
 	lru_add_drain();
 	spin_lock_irq(&zone->lru_lock);
 
+	/*
+	 * If we are lumpy compacting, we bump nr_to_scan to at least
+	 * the size of the page we are trying to allocate
+	 */
+	if (sc->reclaim_mode & RECLAIM_MODE_COMPACTION)
+		nr_to_scan = max(nr_to_scan, (1UL << sc->order));
+
 	if (scanning_global_lru(sc)) {
 		nr_taken = isolate_pages_global(nr_to_scan,
 			&page_list, &nr_scanned, sc->order,
@@ -1440,6 +1445,9 @@ shrink_inactive_list(unsigned long nr_to_scan, struct zone *zone,
 	__count_zone_vm_events(PGSTEAL, zone, nr_reclaimed);
 
 	putback_lru_pages(zone, sc, nr_anon, nr_file, &page_list);
+
+	if (sc->reclaim_mode & RECLAIM_MODE_COMPACTION)
+		reclaimcompact_zone_order(zone, sc->order, sc->gfp_mask);
 
 	trace_mm_vmscan_lru_shrink_inactive(zone->zone_pgdat->node_id,
 		zone_idx(zone),

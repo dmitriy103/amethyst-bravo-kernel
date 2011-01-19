@@ -24,12 +24,9 @@ extern int sysctl_extfrag_handler(struct ctl_table *table, int write,
 
 extern int fragmentation_index(struct zone *zone, unsigned int order);
 extern unsigned long try_to_compact_pages(struct zonelist *zonelist,
-			int order, gfp_t gfp_mask, nodemask_t *mask,
-			bool sync);
-extern unsigned long compaction_suitable(struct zone *zone, int order);
-extern unsigned long compact_zone_order(struct zone *zone, int order,
-					gfp_t gfp_mask, bool sync,
-					int compact_mode);
+			int order, gfp_t gfp_mask, nodemask_t *mask);
+extern unsigned long reclaimcompact_zone_order(struct zone *zone,
+			int order, gfp_t gfp_mask);
 
 /* Do not skip compaction more than 64 times */
 #define COMPACT_MAX_DEFER_SHIFT 6
@@ -78,6 +75,12 @@ static inline unsigned long compact_zone_order(struct zone *zone, int order,
 					       int compact_mode)
 {
 	return COMPACT_CONTINUE;
+}
+
+static inline unsigned long reclaimcompact_zone_order(struct zone *zone,
+			int order, gfp_t gfp_mask)
+{
+	return 0;
 }
 
 static inline void defer_compaction(struct zone *zone)
