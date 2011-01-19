@@ -35,7 +35,7 @@
  * (to see the precise effective timeslice length of your workload,
  *  run vmstat and monitor the context-switches (cs) field)
  */
-unsigned int systctl_sched_latency = 600000ULL;
+unsigned int sysctl_sched_latency = 600000ULL;
 unsigned int normalized_sysctl_sched_latency = 600000ULL;
 
 /*
