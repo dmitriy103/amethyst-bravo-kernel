@@ -1,7 +1,9 @@
+#!/bin/bash
 rm ZipBuilder/system/lib/modules/*
-cp ../*/*/*/*/*.ko ZipBuilder/system/lib/modules/
-cp ../*/*/*/*.ko ZipBuilder/system/lib/modules/
-cp ../*/*/*.ko ZipBuilder/system/lib/modules/
+cp */*/*/*/*.ko ZipBuilder/system/lib/modules/
+cp */*/*/*.ko ZipBuilder/system/lib/modules/
+cp */*/*.ko ZipBuilder/system/lib/modules/
+cd ZipBuilder
 
 dirCheck=( "kernel" "META-INF" "META-INF/com" "META-INF/com/google" "META-INF/com/google/android" "system/" "system/lib" "system/lib/modules" )
 
