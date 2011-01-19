@@ -89,7 +89,6 @@ config IOSCHED_VR
 	  Requests are chosen according to SSTF with a penalty of rev_penalty
 	  for switching head direction.
 
-
 choice
 	prompt "Default I/O scheduler"
 	default DEFAULT_BFQ
