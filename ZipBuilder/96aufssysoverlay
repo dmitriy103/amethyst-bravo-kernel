@@ -1,0 +1,9 @@
+#!/system/bin/sh
+# Dirty sys rw overlay using aufs
+# stevec@couttsnet.com (coutts99)
+
+insmod aufs
+mkdir /mnt/asec/sd
+mount -t ext4 /dev/block/mmcblk0p2 /mnt/asec/sd
+mount -t aufs -o br=/mnt/asec/sd/sysrw=rw:/system=ro none /system
+mount -t ext4 /dev/block/mmcblk0p2 /system/sd
