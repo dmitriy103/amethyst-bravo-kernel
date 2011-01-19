@@ -30,6 +30,9 @@
 #include "acpuclock.h"
 #include "avs.h"
 #include "proc_comm.h"
+#ifdef CONFIG_CPU_FREQ_VDD_LEVELS
+#include "board-bravo.h"
+#endif
 
 #if 0
 #define DEBUG(x...) pr_info(x)
@@ -609,4 +612,45 @@ void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *clkdata)
 		drv_state.acpu_set_vdd = NULL;
 	}
 #endif
+
 }
+
+#ifdef CONFIG_CPU_FREQ_VDD_LEVELS
+
+ssize_t acpuclk_get_vdd_levels_str(char *buf)
+{
+	int i, len = 0;
+	if (buf)
+	{
+		mutex_lock(&drv_state.lock);
+		for (i = 0; acpu_freq_tbl[i].acpu_khz; i++) 
+		{
+			if (freq_table[i].frequency != CPUFREQ_ENTRY_INVALID)
+				len += sprintf(buf + len, "%8u: %4d\n", acpu_freq_tbl[i].acpu_khz, acpu_freq_tbl[i].vdd);
+		}
+		mutex_unlock(&drv_state.lock);
+	}
+	return len;
+}
+
+void acpuclk_set_vdd(unsigned acpu_khz, int vdd)
+{
+	int i;
+	vdd = vdd / 25 * 25;	//! regulator only accepts multiples of 25 (mV)
+	mutex_lock(&drv_state.lock);
+	for (i = 0; acpu_freq_tbl[i].acpu_khz; i++)
+	{
+		if (freq_table[i].frequency != CPUFREQ_ENTRY_INVALID)
+		{
+			if (acpu_khz == 0)
+				acpu_freq_tbl[i].vdd = min(max((acpu_freq_tbl[i].vdd + vdd), BRAVO_TPS65023_MIN_UV_MV), BRAVO_TPS65023_MAX_UV_MV);
+			else if (acpu_freq_tbl[i].acpu_khz == acpu_khz)
+				acpu_freq_tbl[i].vdd = min(max(vdd, BRAVO_TPS65023_MIN_UV_MV), BRAVO_TPS65023_MAX_UV_MV);
+		}
+	}
+	mutex_unlock(&drv_state.lock);
+}
+
+#endif
+
+
