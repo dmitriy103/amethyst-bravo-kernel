@@ -763,6 +763,7 @@ uncharge:
 unlock:
 	unlock_page(page);
 
+move_newpage:
 	if (rc != -EAGAIN) {
  		/*
  		 * A page that has been migrated has all references
@@ -775,8 +776,6 @@ unlock:
 				page_is_file_cache(page));
 		putback_lru_page(page);
 	}
-
-move_newpage:
 
 	/*
 	 * Move the new page to the LRU. If migration was not successful
