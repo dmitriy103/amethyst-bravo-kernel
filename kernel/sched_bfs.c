@@ -138,6 +138,8 @@ int rr_interval __read_mostly = rr_interval_default;
 int rr_interval __read_mostly = rr_interval_server;
 #elif defined(CONFIG_ZEN_DESKTOP)
 int rr_interval __read_mostly = rr_interval_desktop;
+#elif defined(CONFIG_ZEN_ANDROID)
+int rr_interval __read_mostly = rr_interval_android;
 #elif defined(CONFIG_ZEN_CUSTOM)
 int rr_interval __read_mostly = rr_interval_custom;
 #endif
@@ -154,6 +156,8 @@ int sched_iso_cpu __read_mostly = sched_iso_cpu_default;
 int sched_iso_cpu __read_mostly = sched_iso_cpu_server;
 #elif defined(CONFIG_ZEN_DESKTOP)
 int sched_iso_cpu __read_mostly = sched_iso_cpu_desktop;
+#elif defined(CONFIG_ZEN_ANDROID)
+int sched_iso_cpu __read_mostly = sched_iso_cpu_android;
 #elif defined(CONFIG_ZEN_CUSTOM)
 int sched_iso_cpu __read_mostly = sched_iso_cpu_custom;
 #endif

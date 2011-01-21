@@ -69,7 +69,7 @@ config SCHED_BFS_AUTOISO
 
 choice
 	prompt "Zen-Tune Profile"
-	default ZEN_DESKTOP
+	default ZEN_ANDROID
 	---help---
 	  Select the tunable profile to be used.
 
@@ -102,6 +102,16 @@ config ZEN_DESKTOP
 	  *BFS ONLY*
 	   ISO_CPU: 25
 	   RR_INTERVAL: 3
+
+config ZEN_ANDROID
+        bool "android"
+        ---help---
+          This option sets tunables for a desktop environment.
+           DIRTY_RATIO: 50 
+           BACKGROUND_DIRTY_RATIO: 20
+          *BFS ONLY*
+           ISO_CPU: 25
+           RR_INTERVAL: 6
 
 config ZEN_CUSTOM
 	bool "Custom"
