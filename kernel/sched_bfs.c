@@ -68,6 +68,8 @@
 #include <linux/bootmem.h>
 #include <linux/ftrace.h>
 #include <linux/slab.h>
+#include <linux/zentune.h>
+
 
 #include <asm/tlb.h>
 #include <asm/unistd.h>
@@ -123,21 +125,38 @@
 #define NS_TO_MS(TIME)		((TIME) >> 20)
 #define NS_TO_US(TIME)		((TIME) >> 10)
 
-#define RESCHED_US	(100) /* Reschedule if less than this many Î¼s left */
+#define RESCHED_US	(100) /* Reschedule if less than this many μs left */
 
 /*
  * This is the time all tasks within the same priority round robin.
  * Value is in ms and set to a minimum of 6ms. Scales with number of cpus.
  * Tunable via /proc interface.
  */
-int rr_interval __read_mostly = 6;
+#if defined(CONFIG_ZEN_DEFAULT)
+int rr_interval __read_mostly = rr_interval_default;
+#elif defined(CONFIG_ZEN_SERVER)
+int rr_interval __read_mostly = rr_interval_server;
+#elif defined(CONFIG_ZEN_DESKTOP)
+int rr_interval __read_mostly = rr_interval_desktop;
+#elif defined(CONFIG_ZEN_CUSTOM)
+int rr_interval __read_mostly = rr_interval_custom;
+#endif
+
 
 /*
  * sched_iso_cpu - sysctl which determines the cpu percentage SCHED_ISO tasks
  * are allowed to run five seconds as real time tasks. This is the total over
  * all online cpus.
  */
-int sched_iso_cpu __read_mostly = 25;
+#if defined(CONFIG_ZEN_DEFAULT)
+int sched_iso_cpu __read_mostly = sched_iso_cpu_default;
+#elif defined(CONFIG_ZEN_SERVER)
+int sched_iso_cpu __read_mostly = sched_iso_cpu_server;
+#elif defined(CONFIG_ZEN_DESKTOP)
+int sched_iso_cpu __read_mostly = sched_iso_cpu_desktop;
+#elif defined(CONFIG_ZEN_CUSTOM)
+int sched_iso_cpu __read_mostly = sched_iso_cpu_custom;
+#endif
 
 /*
  * The relative length of deadline for each priority(nice) level.
@@ -557,6 +576,26 @@ static inline void __task_grq_unlock(void)
 	__releases(grq.lock)
 {
 	grq_unlock();
+}
+
+/*
+ * Look for any tasks *anywhere* that are running nice 0 or better. We do
+ * this lockless for overhead reasons since the occasional wrong result
+ * is harmless.
+ */
+int above_background_load(void)
+{
+	struct task_struct *cpu_curr;
+	unsigned long cpu;
+
+	for_each_online_cpu(cpu) {
+		cpu_curr = cpu_rq(cpu)->curr;
+		if (unlikely(!cpu_curr))
+			continue;
+		if (PRIO_TO_NICE(cpu_curr->static_prio) < 1)
+			return 1;
+	}
+	return 0;
 }
 
 #ifndef __ARCH_WANT_UNLOCKED_CTXSW
@@ -1417,7 +1456,7 @@ static int try_to_wake_up(struct task_struct *p, unsigned int state,
 
 	get_cpu();
 
-	/* This barrier is undocumented, probably for p->state? ãã */
+	/* This barrier is undocumented, probably for p->state? くそ */
 	smp_wmb();
 
 	/*
@@ -1426,7 +1465,7 @@ static int try_to_wake_up(struct task_struct *p, unsigned int state,
 	 */
 	rq = task_grq_lock(p, &flags);
 
-	/* state is a volatile long, ã©ããã¦ãåãããªã */
+	/* state is a volatile long, どうして、分からない */
 	if (!((unsigned int)p->state & state))
 		goto out_unlock;
 
@@ -2539,7 +2578,7 @@ static void task_running_tick(struct rq *rq)
 	 * Tasks that were scheduled in the first half of a tick are not
 	 * allowed to run into the 2nd half of the next tick if they will
 	 * run out of time slice in the interim. Otherwise, if they have
-	 * less than RESCHED_US Î¼s of time slice left they will be rescheduled.
+	 * less than RESCHED_US μs of time slice left they will be rescheduled.
 	 */
 	if (rq->dither) {
 		if (rq->rq_time_slice > HALF_JIFFY_US)
@@ -4252,7 +4291,7 @@ static inline int should_resched(void)
 
 static void __cond_resched(void)
 {
-	/* NOT a real fix but will make voluntary preempt work. é¦¬é¹¿ãªäº */
+	/* NOT a real fix but will make voluntary preempt work. 馬鹿な事 */
 	if (unlikely(system_state != SYSTEM_RUNNING))
 		return;
 
@@ -4818,6 +4857,23 @@ void sched_idle_next(void)
 	grq_unlock_irqrestore(&flags);
 }
 
+/*
+ * Ensures that the idle task is using init_mm right before its cpu goes
+ * offline.
+ */
+void idle_task_exit(void)
+{
+	struct mm_struct *mm = current->active_mm;
+
+	BUG_ON(cpu_online(smp_processor_id()));
+
+	if (mm != &init_mm)
+		switch_mm(mm, &init_mm, current);
+	mmdrop(mm);
+}
+
+#endif /* CONFIG_HOTPLUG_CPU */
+
 void sched_set_stop_task(int cpu, struct task_struct *stop)
 {
 	struct sched_param stop_param = { .sched_priority = STOP_PRIO };
@@ -4846,23 +4902,6 @@ void sched_set_stop_task(int cpu, struct task_struct *stop)
 		sched_setscheduler_nocheck(old_stop, SCHED_FIFO, &start_param);
 	}
 }
-
-/*
- * Ensures that the idle task is using init_mm right before its cpu goes
- * offline.
- */
-void idle_task_exit(void)
-{
-	struct mm_struct *mm = current->active_mm;
-
-	BUG_ON(cpu_online(smp_processor_id()));
-
-	if (mm != &init_mm)
-		switch_mm(mm, &init_mm, current);
-	mmdrop(mm);
-}
-
-#endif /* CONFIG_HOTPLUG_CPU */
 
 #if defined(CONFIG_SCHED_DEBUG) && defined(CONFIG_SYSCTL)
 
