@@ -1,4 +1,4 @@
-case SCHED_BATCH:/*
+/*
  *  kernel/sched_bfs.c, was sched.c
  *
  *  Kernel scheduler and related syscalls
