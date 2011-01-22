@@ -99,23 +99,23 @@ static int au_dpages_append(struct au_dcsub_pages *dpages,
 	}
 
 	/* d_count can be zero */
-	dpage->dentries[dpage->ndentry++] = dget_locked(dentry);
+	dpage->dentries[dpage->ndentry++] = dget_dlock(dentry);
 	return 0; /* success */
 
 out:
 	return err;
 }
 
-int au_dcsub_pages(struct au_dcsub_pages *dpages, struct dentry *root,
+int au_dcsub_pages(struct au_dcsub_pages *dpages, struct dentry *dentry,
 		   au_dpages_test test, void *arg)
 {
 	int err;
-	struct dentry *this_parent = root;
+	struct dentry *this_parent = dentry;
 	struct list_head *next;
-	struct super_block *sb = root->d_sb;
+	struct super_block *sb = dentry->d_sb;
 
 	err = 0;
-	spin_lock(&dcache_lock);
+	spin_lock(&dentry->d_lock);
 repeat:
 	next = this_parent->d_subdirs.next;
 resume:
@@ -146,13 +146,13 @@ resume:
 		}
 	}
 
-	if (this_parent != root) {
+	if (this_parent != dentry) {
 		next = this_parent->d_u.d_child.next;
 		this_parent = this_parent->d_parent; /* dcache_lock is locked */
 		goto resume;
 	}
 out:
-	spin_unlock(&dcache_lock);
+	spin_unlock(&dentry->d_lock);
 	return err;
 }
 
@@ -162,7 +162,7 @@ int au_dcsub_pages_rev(struct au_dcsub_pages *dpages, struct dentry *dentry,
 	int err;
 
 	err = 0;
-	spin_lock(&dcache_lock);
+	spin_lock(&dentry->d_lock);
 	if (do_include && (!test || test(dentry, arg))) {
 		err = au_dpages_append(dpages, dentry, GFP_ATOMIC);
 		if (unlikely(err))
@@ -178,7 +178,7 @@ int au_dcsub_pages_rev(struct au_dcsub_pages *dpages, struct dentry *dentry,
 	}
 
 out:
-	spin_unlock(&dcache_lock);
+	spin_unlock(&dentry->d_lock);
 
 	return err;
 }
