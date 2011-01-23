@@ -22,6 +22,9 @@
 #include <linux/init.h>
 #include "acpuclock.h"
 
+#define CPUFREQ_MAX 998400
+#define CPUFREQ_MIN 245760
+
 static int msm_cpufreq_target(struct cpufreq_policy *policy,
 				unsigned int target_freq,
 				unsigned int relation)
@@ -67,10 +70,8 @@ static int msm_cpufreq_init(struct cpufreq_policy *policy)
 
 	BUG_ON(cpufreq_frequency_table_cpuinfo(policy, table));
 	policy->cur = acpuclk_get_rate();
-#ifdef CONFIG_MSM_CPU_FREQ_SET_MIN_MAX
-        policy->min = CONFIG_MSM_CPU_FREQ_MIN;
-        policy->max = CONFIG_MSM_CPU_FREQ_MAX;
-#endif
+	policy->max = CPUFREQ_MAX;
+	policy->min = CPUFREQ_MIN;
 	policy->cpuinfo.transition_latency =
 		acpuclk_get_switch_time() * NSEC_PER_USEC;
 	return 0;
