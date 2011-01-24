@@ -573,7 +573,8 @@ static void bulk_in_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	struct fsg_common	*common = ep->driver_data;
 	struct fsg_buffhd	*bh = req->context;
-
+	unsigned long           flags;
+	
 	if (req->status || req->actual != req->length)
 		DBG(common, "%s --> %d, %u/%u\n", __func__,
 				req->status, req->actual, req->length);
@@ -582,18 +583,19 @@ static void bulk_in_complete(struct usb_ep *ep, struct usb_request *req)
 
 	/* Hold the lock while we update the request and buffer states */
 	smp_wmb();
-	spin_lock(&common->lock);
+	spin_lock_irqsave(&common->lock, flags);
 	bh->inreq_busy = 0;
 	bh->state = BUF_STATE_EMPTY;
 	wakeup_thread(common);
-	spin_unlock(&common->lock);
+	spin_unlock_irqrestore(&common->lock, flags);
 }
 
 static void bulk_out_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	struct fsg_common	*common = ep->driver_data;
 	struct fsg_buffhd	*bh = req->context;
-
+	unsigned long           flags;
+	
 	dump_msg(common, "bulk-out", req->buf, req->actual);
 	if (req->status || req->actual != bh->bulk_out_intended_length)
 		DBG(common, "%s --> %d, %u/%u\n", __func__,
@@ -604,11 +606,11 @@ static void bulk_out_complete(struct usb_ep *ep, struct usb_request *req)
 
 	/* Hold the lock while we update the request and buffer states */
 	smp_wmb();
-	spin_lock(&common->lock);
+	spin_lock_irqsave(&common->lock, flags);
 	bh->outreq_busy = 0;
 	bh->state = BUF_STATE_FULL;
 	wakeup_thread(common);
-	spin_unlock(&common->lock);
+	spin_unlock_irqrestore(&common->lock, flags);
 }
 
 
@@ -2461,7 +2463,8 @@ static void handle_exception(struct fsg_common *common)
 	enum fsg_state		old_state;
 	struct fsg_lun		*curlun;
 	unsigned int		exception_req_tag;
-
+	unsigned long           flags;
+	
 	/* Clear the existing signals.  Anything but SIGUSR1 is converted
 	 * into a high-priority EXIT exception. */
 	for (;;) {
@@ -2509,7 +2512,7 @@ static void handle_exception(struct fsg_common *common)
 
 	/* Reset the I/O buffer states and pointers, the SCSI
 	 * state, and the exception.  Then invoke the handler. */
-	spin_lock_irq(&common->lock);
+	spin_lock_irqsave(&common->lock, flags);
 
 	for (i = 0; i < FSG_NUM_BUFFERS; ++i) {
 		bh = &common->buffhds[i];
@@ -2533,16 +2536,16 @@ static void handle_exception(struct fsg_common *common)
 		}
 		common->state = FSG_STATE_IDLE;
 	}
-	spin_unlock_irq(&common->lock);
+	spin_unlock_irqrestore(&common->lock, flags);
 
 	/* Carry out any extra actions required for the exception */
 	switch (old_state) {
 	case FSG_STATE_ABORT_BULK_OUT:
 		send_status(common);
-		spin_lock_irq(&common->lock);
+		spin_lock_irqsave(&common->lock, flags);
 		if (common->state == FSG_STATE_STATUS_PHASE)
 			common->state = FSG_STATE_IDLE;
-		spin_unlock_irq(&common->lock);
+		spin_unlock_irqrestore(&common->lock, flags);
 		break;
 
 	case FSG_STATE_RESET:
@@ -2573,9 +2576,9 @@ static void handle_exception(struct fsg_common *common)
 	case FSG_STATE_EXIT:
 	case FSG_STATE_TERMINATED:
 		do_set_interface(common, NULL);		/* Free resources */
-		spin_lock_irq(&common->lock);
+		spin_lock_irqsave(&common->lock, flags);
 		common->state = FSG_STATE_TERMINATED;	/* Stop the thread */
-		spin_unlock_irq(&common->lock);
+		spin_unlock_irqrestore(&common->lock, flags);
 		break;
 
 	case FSG_STATE_INTERFACE_CHANGE:
@@ -2594,6 +2597,7 @@ static void handle_exception(struct fsg_common *common)
 static int fsg_main_thread(void *common_)
 {
 	struct fsg_common	*common = common_;
+	unsigned long           flags;
 
 	/* Allow the thread to be killed by a signal, but set the signal mask
 	 * to block everything but INT, TERM, KILL, and USR1. */
@@ -2625,31 +2629,31 @@ static int fsg_main_thread(void *common_)
 		if (get_next_command(common))
 			continue;
 
-		spin_lock_irq(&common->lock);
+		spin_lock_irqsave(&common->lock, flags);
 		if (!exception_in_progress(common))
 			common->state = FSG_STATE_DATA_PHASE;
-		spin_unlock_irq(&common->lock);
+		spin_unlock_irqrestore(&common->lock, flags);
 
 		if (do_scsi_command(common) || finish_reply(common))
 			continue;
 
-		spin_lock_irq(&common->lock);
+		spin_lock_irqsave(&common->lock, flags);
 		if (!exception_in_progress(common))
 			common->state = FSG_STATE_STATUS_PHASE;
-		spin_unlock_irq(&common->lock);
+		spin_unlock_irqrestore(&common->lock, flags);
 
 		if (send_status(common))
 			continue;
 
-		spin_lock_irq(&common->lock);
+		spin_lock_irqsave(&common->lock, flags);
 		if (!exception_in_progress(common))
 			common->state = FSG_STATE_IDLE;
-		spin_unlock_irq(&common->lock);
+		spin_unlock_irqrestore(&common->lock, flags);
 	}
 
-	spin_lock_irq(&common->lock);
+	spin_lock_irqsave(&common->lock, flags);
 	common->thread_task = NULL;
-	spin_unlock_irq(&common->lock);
+	spin_unlock_irqrestore(&common->lock, flags);
 
 	if (!common->ops || !common->ops->thread_exits
 	 || common->ops->thread_exits(common) < 0) {
