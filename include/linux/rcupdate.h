@@ -96,10 +96,10 @@ static inline void __rcu_read_unlock(void)
 	preempt_enable();
 }
 
-/*static inline void synchronize_rcu(void)
+static inline void synchronize_rcu(void)
 {
 	synchronize_sched();
-}*/
+}
 
 static inline int rcu_preempt_depth(void)
 {
@@ -136,8 +136,6 @@ static inline void rcu_exit_nohz(void)
 #include <linux/rcutree.h>
 #elif defined(CONFIG_TINY_RCU) || defined(CONFIG_TINY_PREEMPT_RCU)
 #include <linux/rcutiny.h>
-#elif defined(CONFIG_CLASSIC_RCU)
-#include <linux/rcuclassic.h>
 #else
 #error "Unknown RCU implementation specified to kernel configuration"
 #endif
