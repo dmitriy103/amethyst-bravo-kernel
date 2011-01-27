@@ -85,6 +85,7 @@ out:
 static int aufs_permission(struct inode *inode, int mask)
 {
 	int err;
+	unsigned int flags=0;
 	aufs_bindex_t bindex, bend;
 	const unsigned char isdir = !!S_ISDIR(inode->i_mode),
 		write_mask = !!(mask & (MAY_WRITE | MAY_APPEND));
@@ -112,7 +113,7 @@ static int aufs_permission(struct inode *inode, int mask)
 		err = 0;
 		bindex = au_ibstart(inode);
 		br = au_sbr(sb, bindex);
-		err = h_permission(h_inode, mask, br->br_mnt, br->br_perm, NULL);
+		err = h_permission(h_inode, mask, br->br_mnt, br->br_perm, flags);
 		if (write_mask
 		    && !err
 		    && !special_file(h_inode->i_mode)) {
@@ -139,7 +140,7 @@ static int aufs_permission(struct inode *inode, int mask)
 
 			br = au_sbr(sb, bindex);
 			err = h_permission(h_inode, mask, br->br_mnt,
-					   br->br_perm, NULL);
+					   br->br_perm, flags);
 		}
 	}
 
