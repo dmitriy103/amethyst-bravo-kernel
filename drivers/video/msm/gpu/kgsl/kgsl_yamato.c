@@ -878,7 +878,7 @@ static inline int _wait_timestamp(struct kgsl_device *device,
 {
 	long status;
 
-	status = wait_event_interruptible_timeout(device->ib1_wq,
+	status = wait_io_event_interruptible_timeout(device->ib1_wq,
 			kgsl_cmdstream_check_timestamp(device, timestamp),
 			msecs_to_jiffies(msecs));
 
