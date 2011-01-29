@@ -45,6 +45,20 @@ ARCH=arm make -j2
 ZipBuilder/builder.sh
 cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.37_OC1190_HAVS@875mV_Ginger_BFS_VR_SLQB.zip
 
+## HAVS@850 build, this is just for me :)
+cp arch/arm/mach-msm/avs.c.850 arch/arm/mach-msm/avs.c
+cp arch/arm/mach-msm/avs.h.850 arch/arm/mach-msm/avs.h 
+ARCH=arm make -j2
+ZipBuilder/builder.sh
+cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.37_OC1190_HAVS@850mV_Ginger_BFS_VR_SLQB.zip
+
+## HAVS@825 build, this is just for the stupid :)
+cp arch/arm/mach-msm/avs.c.825 arch/arm/mach-msm/avs.c
+cp arch/arm/mach-msm/avs.h.825 arch/arm/mach-msm/avs.h 
+ARCH=arm make -j2
+ZipBuilder/builder.sh
+cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.37_OC1190_HAVS@825mV_Ginger_BFS_VR_SLQB.zip
+
 cp arch/arm/mach-msm/avs.h.875 arch/arm/mach-msm/avs.h
 ARCH=arm make defconfig SVS_BFS_defconfig
 ARCH=arm make -j2
@@ -97,6 +111,21 @@ ARCH=arm make -j2
 ZipBuilder/builder.sh
 cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.37_OC1190_HAVS@875mV_Froyo_BFS_VR_SLQB.zip
 
+## HAVS@850 build, this is just for me :)
+cp arch/arm/mach-msm/avs.c.850 arch/arm/mach-msm/avs.c
+cp arch/arm/mach-msm/avs.h.850 arch/arm/mach-msm/avs.h 
+ARCH=arm make -j2
+ZipBuilder/builder.sh
+cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.37_OC1190_HAVS@850mV_Froyo_BFS_VR_SLQB.zip
+
+## HAVS@825 build, this is just for the stupid :)
+cp arch/arm/mach-msm/avs.c.825 arch/arm/mach-msm/avs.c
+cp arch/arm/mach-msm/avs.h.825 arch/arm/mach-msm/avs.h 
+ARCH=arm make -j2
+ZipBuilder/builder.sh
+cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.37_OC1190_HAVS@825mV_Froyo_BFS_VR_SLQB.zip
+
+cp arch/arm/mach-msm/avs.c.standard arch/arm/mach-msm/avs.c
 cp arch/arm/mach-msm/avs.h.875 arch/arm/mach-msm/avs.h
 ARCH=arm make defconfig SVS_BFS_defconfig
 ARCH=arm make -j2
