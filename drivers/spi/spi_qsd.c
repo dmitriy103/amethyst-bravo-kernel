@@ -237,6 +237,7 @@ struct msm_spi {
 	int                      max_clock_speed;
 	unsigned long            mem_phys_addr;
 	size_t                   mem_size;
+	int                      input_fifo_size;
 	u32                      rx_bytes_remaining;
 	u32                      tx_bytes_remaining;
 	u32                      clock_speed;
@@ -280,8 +281,6 @@ struct msm_spi {
 #endif
 };
 
-static int input_fifo_size;
-
 static void msm_spi_clock_set(struct msm_spi *dd, int speed)
 {
 	int rc;
@@ -317,20 +316,20 @@ static void __init msm_spi_calculate_fifo_size(struct msm_spi *dd)
 	}
 	switch (mult) {
 	case 0:
-		input_fifo_size = words * 2;
+		dd->input_fifo_size = words * 2;
 		break;
 	case 1:
-		input_fifo_size = words * 4;
+		dd->input_fifo_size = words * 4;
 		break;
 	case 2:
-		input_fifo_size = words * 8;
+		dd->input_fifo_size = words * 8;
 		break;
 	default:
 		goto fifo_size_err;
 	}
 
 	/* we can't use dma with 8 bytes of fifo since dm burst size is 16 */
-	if (input_fifo_size*sizeof(u32) < DM_BURST_SIZE)
+	if (dd->input_fifo_size*sizeof(u32) < DM_BURST_SIZE)
 		dd->use_dma = 0;
 	if (dd->use_dma) {
 		dd->block_size = words*sizeof(u32); /* in bytes */
@@ -585,7 +584,7 @@ static irqreturn_t msm_spi_output_irq(int irq, void *dev_id)
 	/* There could be one word in input FIFO, so don't send more  */
 	/* than input_fifo_size - 1 more words.                       */
 	while ((dd->tx_bytes_remaining > 0) &&
-	       (count < input_fifo_size - 1) &&
+	       (count < dd->input_fifo_size - 1) &&
 	       !(readl(dd->base + SPI_OPERATIONAL) & SPI_OP_OUTPUT_FIFO_FULL)) {
 		msm_spi_write_word_to_fifo(dd);
 		count++;
@@ -721,7 +720,7 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 		   larger than fifo size READ COUNT must be disabled.
 		   For those transactions we usually move to Data Mover mode.
 		*/
-		if (read_count <= input_fifo_size)
+		if (read_count <= dd->input_fifo_size)
 			writel(read_count, dd->base + SPI_MX_READ_COUNT);
 		else
 			writel(0, dd->base + SPI_MX_READ_COUNT);
@@ -953,18 +952,9 @@ static int msm_spi_setup(struct spi_device *spi)
 	u32              spi_config;
 	u32              mask;
 
-	if (!spi->bits_per_word)
-		spi->bits_per_word = 8;
 	if (spi->bits_per_word < 4 || spi->bits_per_word > 32) {
 		dev_err(&spi->dev, "%s: invalid bits_per_word %d\n",
 			__func__, spi->bits_per_word);
-		rc = -EINVAL;
-	}
-	if (spi->mode & ~(SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LOOP)) {
-		dev_err(&spi->dev, "%s, unsupported mode bits %x\n",
-			__func__,
-			spi->mode & ~(SPI_CPOL | SPI_CPHA | SPI_CS_HIGH
-							  | SPI_LOOP));
 		rc = -EINVAL;
 	}
 	if (spi->chip_select > SPI_NUM_CHIPSELECTS-1) {
@@ -1302,6 +1292,8 @@ static int __init msm_spi_probe(struct platform_device *pdev)
 		goto err_probe_exit;
 	}
 
+	/* the spi->mode bits understood by this driver: */
+	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LOOP;
 	master->bus_num        = pdev->id;
 	master->num_chipselect = SPI_NUM_CHIPSELECTS;
 	master->setup          = msm_spi_setup;
