@@ -19,6 +19,11 @@
 #include <linux/err.h>
 #include <linux/delay.h>
 
+#include "adsp_audio.h"
+#include "adsp_module_afe.h"
+
+#include "../pmic.h"
+
 /* the audio codec control consists of
  * - mi2s transports (x3)
  * - lpa (low power audio) frontend for mi2s tx
@@ -425,8 +430,6 @@ int msm_codec_output_enable(struct msm_codec *mc)
 	rate = 48000 * 16 * 2 * 8;
 	clk_set_rate(mc->rx_mclk, rate);
 
-	printk("RATE %d\n", clk_get_rate(mc->rx_mclk));
-
 	clk_enable(mc->rx_mclk);
 	clk_enable(mc->rx_sclk);
 
@@ -474,6 +477,42 @@ int msm_codec_output_disable(struct msm_codec *mc)
 }
 
 
+int msm_codec_input_enable(struct msm_codec *mc)
+{
+	unsigned rate;
+
+	pr_info("msm_codec_input_enable()\n");
+
+	/* yes tx clks for rx codec -- the clocks
+	 * are named from the opposite POV of the
+	 * codec for some reason...
+	 */
+
+
+	/* bitrate * bits * channels * 8 */
+	rate = 48000 * 16 * 2 * 8;
+	clk_set_rate(mc->tx_mclk, rate);
+
+	clk_enable(mc->tx_mclk);
+	clk_enable(mc->tx_sclk);
+
+	/* fire up mi2s transport */
+	mi2s_set_input(mc, 2, 16);
+
+	return 0;
+}
+
+int msm_codec_input_disable(struct msm_codec *mc)
+{
+	pr_info("msm_codec_input_disable()\n");
+
+	clk_disable(mc->tx_sclk);
+	clk_disable(mc->tx_mclk);
+
+	return 0;
+}
+
+
 static struct msm_codec the_msm_codec;
 
 int msm_codec_output(int enable)
@@ -483,6 +522,15 @@ int msm_codec_output(int enable)
 		return msm_codec_output_enable(mc);
 	else
 		return msm_codec_output_disable(mc);
+}
+
+int msm_codec_input(int enable)
+{
+	struct msm_codec *mc = &the_msm_codec;
+	if (enable)
+		return msm_codec_input_enable(mc);
+	else
+		return msm_codec_input_disable(mc);
 }
 
 /* 7x30 memory map */
@@ -537,4 +585,35 @@ int msm_codec_init(void)
 		return -ENODEV;
 
 	return 0;
+}
+
+int audio_route_path(const char *path)
+{
+	static int need_init = 1;
+
+	pr_info("audio_route_path: %s\n", path ? path : "default");
+
+	if (need_init) {
+		pr_info("audio_route_path: enable mi2s and lpa\n");
+
+		msm_codec_output(1);
+		afe_enable(AFE_DEVICE_MI2S_CODEC_RX, 48000, 2);
+
+		msm_codec_input(1);
+		afe_enable(AFE_DEVICE_MI2S_CODEC_TX, 48000, 2);
+
+		/* should be only for handset codec when required... */
+		pmic_hsed_enable(PM_HSED_CONTROLLER_0, PM_HSED_ENABLE_PWM_TCXO);
+
+		need_init = 0;
+
+		/* make sure something sane happens if nobody has configured
+		 * an audio route and the first user requests the default
+		 * route
+		 */
+		if (path == NULL)
+			return codec_route_path("speaker");
+	}
+
+	return codec_route_path(path);
 }

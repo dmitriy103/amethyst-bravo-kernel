@@ -35,6 +35,7 @@
 struct mdp_lcdc_info {
 	struct mdp_info			*mdp;
 	struct clk			*mdp_clk;
+	struct clk			*mdp_pclk;
 	struct clk			*pclk;
 	struct clk			*pad_pclk;
 	struct msm_panel_data		fb_panel_data;
@@ -94,6 +95,8 @@ static int lcdc_suspend(struct msm_panel_data *fb_panel)
 	mdp_writel(lcdc->mdp, 0, MDP_LCDC_EN);
 	clk_disable(lcdc->pad_pclk);
 	clk_disable(lcdc->pclk);
+	if (lcdc->mdp_pclk)
+		clk_disable(lcdc->mdp_pclk);
 	clk_disable(lcdc->mdp_clk);
 
 	return 0;
@@ -106,6 +109,8 @@ static int lcdc_resume(struct msm_panel_data *fb_panel)
 	pr_info("%s: resuming\n", __func__);
 
 	clk_enable(lcdc->mdp_clk);
+	if (lcdc->mdp_pclk)
+		clk_enable(lcdc->mdp_pclk);
 	clk_enable(lcdc->pclk);
 	clk_enable(lcdc->pad_pclk);
 	mdp_writel(lcdc->mdp, 1, MDP_LCDC_EN);
@@ -117,8 +122,11 @@ static int lcdc_hw_init(struct mdp_lcdc_info *lcdc)
 {
 	struct msm_panel_data *fb_panel = &lcdc->fb_panel_data;
 	uint32_t dma_cfg;
+	uint32_t fb_size;
 
 	clk_enable(lcdc->mdp_clk);
+	if (lcdc->mdp_pclk)
+		clk_enable(lcdc->mdp_pclk);
 	clk_enable(lcdc->pclk);
 	clk_enable(lcdc->pad_pclk);
 
@@ -137,33 +145,52 @@ static int lcdc_hw_init(struct mdp_lcdc_info *lcdc)
 	mdp_writel(lcdc->mdp, lcdc->parms.hsync_skew, MDP_LCDC_HSYNC_SKEW);
 
 	mdp_writel(lcdc->mdp, 0, MDP_LCDC_BORDER_CLR);
-	mdp_writel(lcdc->mdp, 0xff, MDP_LCDC_UNDERFLOW_CTL);
+	mdp_writel(lcdc->mdp, 0x80000000 | 0xff, MDP_LCDC_UNDERFLOW_CTL);
 	mdp_writel(lcdc->mdp, 0, MDP_LCDC_ACTIVE_HCTL);
 	mdp_writel(lcdc->mdp, 0, MDP_LCDC_ACTIVE_V_START);
 	mdp_writel(lcdc->mdp, 0, MDP_LCDC_ACTIVE_V_END);
 	mdp_writel(lcdc->mdp, lcdc->parms.polarity, MDP_LCDC_CTL_POLARITY);
 
+	fb_size = ((fb_panel->fb_data->yres & 0x7ff) << 16) |
+		(fb_panel->fb_data->xres & 0x7ff);
+
 	/* config the dma_p block that drives the lcdc data */
 	mdp_writel(lcdc->mdp, lcdc->fb_start, MDP_DMA_P_IBUF_ADDR);
-	mdp_writel(lcdc->mdp, (((fb_panel->fb_data->yres & 0x7ff) << 16) |
-			       (fb_panel->fb_data->xres & 0x7ff)),
-		   MDP_DMA_P_SIZE);
-
+	mdp_writel(lcdc->mdp, fb_size, MDP_DMA_P_SIZE);
 	mdp_writel(lcdc->mdp, 0, MDP_DMA_P_OUT_XY);
 
+#ifdef CONFIG_MSM_MDP40
+	mdp_writel(lcdc->mdp, lcdc->fb_start, MDP_PIPE_RGB_SRC_ADDR(0));
+	mdp_writel(lcdc->mdp, fb_size, MDP_PIPE_RGB_SRC_SIZE(0));
+	mdp_writel(lcdc->mdp, 0, MDP_PIPE_RGB_SRC_XY(0));
+#endif
+
 	dma_cfg = mdp_readl(lcdc->mdp, MDP_DMA_P_CONFIG);
-	dma_cfg |= (DMA_PACK_ALIGN_LSB |
-		   DMA_PACK_PATTERN_RGB |
-		   DMA_DITHER_EN);
+	dma_cfg &= ~(DMA_PACK_PATTERN_MASK | DMA_PACK_ALIGN_MASK);
+	dma_cfg |= (DMA_PACK_ALIGN_MSB |
+		    DMA_PACK_PATTERN_RGB |
+		    DMA_DITHER_EN);
 	dma_cfg |= DMA_OUT_SEL_LCDC;
 	dma_cfg &= ~DMA_DST_BITS_MASK;
 
 	if (fb_panel->fb_data->output_format == MSM_MDP_OUT_IF_FMT_RGB666)
-		dma_cfg |= DMA_DSTC0G_6BITS | DMA_DSTC1B_6BITS | DMA_DSTC2R_6BITS;
+		dma_cfg |= DMA_DSTC0G_6BITS |
+			   DMA_DSTC1B_6BITS |
+			   DMA_DSTC2R_6BITS;
+	else if (fb_panel->fb_data->output_format == MSM_MDP_OUT_IF_FMT_RGB888)
+		dma_cfg |= DMA_DSTC0G_8BITS |
+			   DMA_DSTC1B_8BITS |
+			   DMA_DSTC2R_8BITS;
 	else
-		dma_cfg |= DMA_DSTC0G_6BITS | DMA_DSTC1B_5BITS | DMA_DSTC2R_5BITS;
+		dma_cfg |= DMA_DSTC0G_6BITS |
+			   DMA_DSTC1B_5BITS |
+			   DMA_DSTC2R_5BITS;
 
 	mdp_writel(lcdc->mdp, dma_cfg, MDP_DMA_P_CONFIG);
+
+#ifdef CONFIG_MSM_MDP40
+	mdp_writel(lcdc->mdp, 0, MDP_DISP_INTF_SEL);
+#endif
 
 	/* enable the lcdc timing generation */
 	mdp_writel(lcdc->mdp, 1, MDP_LCDC_EN);
@@ -219,15 +246,61 @@ static void lcdc_dma_start(void *priv, uint32_t addr, uint32_t stride,
 			   uint32_t y)
 {
 	struct mdp_lcdc_info *lcdc = priv;
+	struct mdp_info *mdp = lcdc->mdp;
+	uint32_t dma2_cfg;
 
+#ifdef CONFIG_MSM_MDP31
 	if (lcdc->mdp->dma_format_dirty) {
 		mdp_writel(lcdc->mdp, 0, MDP_LCDC_EN);
 		mdelay(20);
 		mdp_configure_dma_format(mdp_dev);
 		mdp_writel(lcdc->mdp, 1, MDP_LCDC_EN);
 	}
+
 	mdp_writel(lcdc->mdp, stride, MDP_DMA_P_IBUF_Y_STRIDE);
 	mdp_writel(lcdc->mdp, addr, MDP_DMA_P_IBUF_ADDR);
+#else
+	if (lcdc->mdp->dma_format_dirty) {
+		uint32_t fmt;
+		uint32_t dma_fmt;
+		uint32_t dma_ptrn;
+		uint32_t pattern;
+
+		switch (mdp->dma_format) {
+		case DMA_IBUF_FORMAT_XRGB8888:
+			dma_fmt = DMA_IBUF_FORMAT_RGB888;
+			dma_ptrn = DMA_PACK_PATTERN_BGR;
+			fmt = PPP_CFG_MDP_XRGB_8888(SRC);
+			pattern = PPP_PACK_PATTERN_MDP_BGRA_8888;
+			break;
+		case DMA_IBUF_FORMAT_RGB565:
+			dma_fmt = DMA_IBUF_FORMAT_RGB565;
+			dma_ptrn = DMA_PACK_PATTERN_RGB;
+			fmt = PPP_CFG_MDP_RGB_565(SRC);
+			pattern = PPP_PACK_PATTERN_MDP_RGB_565;
+			break;
+		default:
+			BUG();
+			break;
+		}
+
+		mdp_writel(mdp, fmt, MDP_PIPE_RGB_SRC_FORMAT(0));
+		mdp_writel(mdp, pattern, MDP_PIPE_RGB_SRC_UNPACK_PATTERN(0));
+
+		dma2_cfg = mdp_readl(lcdc->mdp, MDP_DMA_P_CONFIG);
+		dma2_cfg &= ~(DMA_PACK_PATTERN_MASK | DMA_IBUF_FORMAT_MASK |
+			      DMA_PACK_ALIGN_MASK);
+		dma2_cfg |= dma_ptrn | dma_fmt | DMA_PACK_ALIGN_MSB;
+		mdp_writel(mdp, dma2_cfg, MDP_DMA_P_CONFIG);
+		lcdc->mdp->dma_format_dirty = false;
+	}
+
+	mdp_writel(mdp, addr, MDP_PIPE_RGB_SRC_ADDR(0));
+	mdp_writel(mdp, stride, MDP_PIPE_RGB_SRC_Y_STRIDE(0));
+
+	/* flush the new pipe config */
+	mdp_writel(mdp, 0x11, MDP_OVERLAY_REG_FLUSH);
+#endif
 }
 
 static void precompute_timing_parms(struct mdp_lcdc_info *lcdc)
@@ -300,6 +373,10 @@ static int mdp_lcdc_probe(struct platform_device *pdev)
 		goto err_get_mdp_clk;
 	}
 
+	lcdc->mdp_pclk = clk_get(mdp_dev->dev.parent, "mdp_pclk");
+	if (IS_ERR(lcdc->mdp_pclk))
+		lcdc->mdp_pclk = NULL;
+
 	lcdc->pclk = clk_get(mdp_dev->dev.parent, "lcdc_pclk_clk");
 	if (IS_ERR(lcdc->pclk)) {
 		pr_err("%s: failed to get lcdc_pclk\n", __func__);
@@ -370,6 +447,8 @@ err_hw_init:
 err_get_pad_pclk:
 	clk_put(lcdc->pclk);
 err_get_pclk:
+	if (lcdc->mdp_pclk)
+		clk_put(lcdc->mdp_pclk);
 	clk_put(lcdc->mdp_clk);
 err_get_mdp_clk:
 	kfree(lcdc);

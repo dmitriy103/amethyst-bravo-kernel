@@ -124,16 +124,19 @@ config TOUCHSCREEN_CY8CTMG110
 	  To compile this driver as a module, choose M here: the
 	  module will be called cy8ctmg110_ts.
 
-config TOUCHSCREEN_CYPRESS_TMG
-	tristate "Support for Cypress TMC i2c touchscreen"
+config TOUCHSCREEN_CYTTSP_I2C
+	tristate "Cypress TTSP based touchscreens"
 	depends on I2C
+	default n
 	help
-	  Say Y here to enable support for cy8ctmg touchcreens.
+	  Say Y here if you have a Cypress TTSP based touchscreen.
+	  TMA300 is a multi-touch screen which can report upto 10
+	  touches at a time.
 
-	  If unsure, say N
+	  If unsure, say N.
 
 	  To compile this driver as a module, choose M here: the
-	  module will be called h3600_ts_input.
+	  module will be called cyttsp-i2c.
 
 config TOUCHSCREEN_DA9034
 	tristate "Touchscreen support for Dialog Semiconductor DA9034"
