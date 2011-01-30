@@ -27,7 +27,6 @@ extern unsigned long try_to_compact_pages(struct zonelist *zonelist,
 			int order, gfp_t gfp_mask, nodemask_t *mask);
 extern unsigned long reclaimcompact_zone_order(struct zone *zone,
 			int order, gfp_t gfp_mask, int compact_mode);
-					int compact_mode);
 /* Do not skip compaction more than 64 times */
 #define COMPACT_MAX_DEFER_SHIFT 6
 
