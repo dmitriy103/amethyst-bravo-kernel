@@ -169,15 +169,14 @@ EXPORT_SYMBOL(free_task);
 static inline void free_signal_struct(struct signal_struct *sig)
 {
 	taskstats_tgid_free(sig);
+	sched_autogroup_exit(sig);
 	kmem_cache_free(signal_cachep, sig);
 }
 
 static inline void put_signal_struct(struct signal_struct *sig)
 {
-	if (atomic_dec_and_test(&sig->sigcnt)) {
-		sched_autogroup_exit(sig);
+	if (atomic_dec_and_test(&sig->sigcnt))
 		free_signal_struct(sig);
-	}
 }
 
 void __put_task_struct(struct task_struct *tsk)
@@ -1318,7 +1317,7 @@ bad_fork_cleanup_mm:
 	}
 bad_fork_cleanup_signal:
 	if (!(clone_flags & CLONE_THREAD))
-		put_signal_struct(p->signal);
+		free_signal_struct(p->signal);
 bad_fork_cleanup_sighand:
 	__cleanup_sighand(p->sighand);
 bad_fork_cleanup_fs:
@@ -1411,23 +1410,6 @@ long do_fork(unsigned long clone_flags,
 	}
 
 	/*
-	 * We hope to recycle these flags after 2.6.26
-	 */
-	if (unlikely(clone_flags & CLONE_STOPPED)) {
-		static int __read_mostly count = 100;
-
-		if (count > 0 && printk_ratelimit()) {
-			char comm[TASK_COMM_LEN];
-
-			count--;
-			printk(KERN_INFO "fork(): process `%s' used deprecated "
-					"clone flags 0x%lx\n",
-				get_task_comm(comm, current),
-				clone_flags & CLONE_STOPPED);
-		}
-	}
-
-	/*
 	 * When called from kernel_thread, don't do user tracing stuff.
 	 */
 	if (likely(user_mode(regs)))
@@ -1465,16 +1447,7 @@ long do_fork(unsigned long clone_flags,
 		 */
 		p->flags &= ~PF_STARTING;
 
-		if (unlikely(clone_flags & CLONE_STOPPED)) {
-			/*
-			 * We'll start up with an immediate SIGSTOP.
-			 */
-			sigaddset(&p->pending.signal, SIGSTOP);
-			set_tsk_thread_flag(p, TIF_SIGPENDING);
-			__set_task_state(p, TASK_STOPPED);
-		} else {
-			wake_up_new_task(p, clone_flags);
-		}
+		wake_up_new_task(p, clone_flags);
 
 		tracehook_report_clone_complete(trace, regs,
 						clone_flags, nr, p);
