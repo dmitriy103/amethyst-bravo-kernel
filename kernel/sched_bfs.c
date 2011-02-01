@@ -72,6 +72,7 @@
 
 
 #include <asm/tlb.h>
+#include <asm/mutex.h>
 #include <asm/unistd.h>
 
 #include "sched_cpupri.h"
@@ -3395,11 +3396,11 @@ EXPORT_SYMBOL(wait_for_completion_interruptible);
  * This waits for either a completion of a specific task to be signaled or for a
  * specified timeout to expire. It is interruptible. The timeout is in jiffies.
  */
-unsigned long __sched
+long __sched
 wait_for_completion_interruptible_timeout(struct completion *x,
-					  unsigned long timeout)
+                                          unsigned long timeout)
 {
-	return wait_for_common(x, timeout, TASK_INTERRUPTIBLE);
+        return wait_for_common(x, timeout, TASK_INTERRUPTIBLE);
 }
 EXPORT_SYMBOL(wait_for_completion_interruptible_timeout);
 
@@ -3428,11 +3429,11 @@ EXPORT_SYMBOL(wait_for_completion_killable);
  * signaled or for a specified timeout to expire. It can be
  * interrupted by a kill signal. The timeout is in jiffies.
  */
-unsigned long __sched
+long __sched
 wait_for_completion_killable_timeout(struct completion *x,
-				     unsigned long timeout)
+                                     unsigned long timeout)
 {
-	return wait_for_common(x, timeout, TASK_KILLABLE);
+        return wait_for_common(x, timeout, TASK_KILLABLE);
 }
 EXPORT_SYMBOL(wait_for_completion_killable_timeout);
 
@@ -3786,7 +3787,7 @@ static bool check_same_owner(struct task_struct *p)
 }
 
 static int __sched_setscheduler(struct task_struct *p, int policy,
-		       struct sched_param *param, bool user)
+		       const struct sched_param *param, bool user)
 {
 	struct sched_param zero_param = { .sched_priority = 0 };
 	int queued, retval, oldpolicy = -1;
@@ -3958,11 +3959,10 @@ out:
  * NOTE that the task may be already dead.
  */
 int sched_setscheduler(struct task_struct *p, int policy,
-		       struct sched_param *param)
+                       const struct sched_param *param)
 {
-	return __sched_setscheduler(p, policy, param, true);
+        return __sched_setscheduler(p, policy, param, true);
 }
-
 EXPORT_SYMBOL_GPL(sched_setscheduler);
 
 /**
@@ -3977,9 +3977,9 @@ EXPORT_SYMBOL_GPL(sched_setscheduler);
  * but our caller might not have that capability.
  */
 int sched_setscheduler_nocheck(struct task_struct *p, int policy,
-			       struct sched_param *param)
+                               const struct sched_param *param)
 {
-	return __sched_setscheduler(p, policy, param, false);
+        return __sched_setscheduler(p, policy, param, false);
 }
 
 static int

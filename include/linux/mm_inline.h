@@ -22,18 +22,33 @@ static inline int page_is_file_cache(struct page *page)
 }
 
 static inline void
+<<<<<<< HEAD
 __add_page_to_lru_list(struct zone *zone, struct page *page, enum lru_list l,
 		       struct list_head *head)
 {
 	list_add(&page->lru, head);
 	__mod_zone_page_state(zone, NR_LRU_BASE + l, hpage_nr_pages(page));
+=======
+__add_page_to_lru_list(struct zone *zone, struct page *page, enum lru_list l, int tail)
+{
+	/* See if this should be added to the tail of this lru list */
+	if (tail)
+		list_add_tail(&page->lru, &zone->lru[l].list);
+	else
+		list_add(&page->lru, &zone->lru[l].list);
+	__inc_zone_state(zone, NR_LRU_BASE + l);
+>>>>>>> upstream-zen/zen-tune
 	mem_cgroup_add_lru_list(page, l);
 }
 
 static inline void
 add_page_to_lru_list(struct zone *zone, struct page *page, enum lru_list l)
 {
+<<<<<<< HEAD
 	__add_page_to_lru_list(zone, page, l, &zone->lru[l].list);
+=======
+	__add_page_to_lru_list(zone, page, l, 0);
+>>>>>>> upstream-zen/zen-tune
 }
 
 static inline void

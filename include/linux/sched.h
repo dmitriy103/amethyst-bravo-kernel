@@ -1261,7 +1261,7 @@ struct task_struct {
 #endif
 
 	struct list_head tasks;
-#ifdef CONFIG_SMP
+#if defined(CONFIG_SMP) || defined(CONFIG_SCHED_BFS)
 	struct plist_node pushable_tasks;
 #endif
 
