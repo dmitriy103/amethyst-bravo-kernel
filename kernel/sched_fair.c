@@ -1062,14 +1062,9 @@ dequeue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int flags)
 	se->on_rq = 0;
 	update_cfs_load(cfs_rq, 0);
 	account_entity_dequeue(cfs_rq, se);
-<<<<<<< HEAD
 
-	min_vruntime = cfs_rq->min_vruntime;
 	update_min_vruntime(cfs_rq, 0);
-=======
-	update_min_vruntime(cfs_rq);
 	update_cfs_shares(cfs_rq, 0);
->>>>>>> upstream-zen/cfs
 
 	/*
 	 * Normalize the entity after updating the min_vruntime because the
@@ -1115,14 +1110,10 @@ check_preempt_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 		struct sched_entity *se = __pick_next_entity(cfs_rq);
 		s64 delta = curr->vruntime - se->vruntime;
 
-<<<<<<< HEAD
-		if (delta > calc_delta_fair(ideal_runtime, curr))
-=======
 		if (delta < 0)
 			return;
 
 		if (delta > ideal_runtime)
->>>>>>> upstream-zen/cfs
 			resched_task(rq_of(cfs_rq)->curr);
 	}
 }
