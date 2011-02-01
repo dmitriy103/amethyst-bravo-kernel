@@ -580,7 +580,7 @@ __update_curr(struct cfs_rq *cfs_rq, struct sched_entity *curr,
 	delta_exec_weighted = calc_delta_fair(delta_exec, curr);
 
 	curr->vruntime += delta_exec_weighted;
-	update_min_vruntime(cfs_rq);
+	update_min_vruntime(cfs_rq, delta_exec);
 #if defined CONFIG_SMP && defined CONFIG_FAIR_GROUP_SCHED
 	cfs_rq->load_unacc_exec_time += delta_exec;
 #endif
