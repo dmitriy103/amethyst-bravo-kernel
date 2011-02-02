@@ -60,7 +60,7 @@ struct clkctl_acpu_speed {
 	unsigned sc_l_value;
 	unsigned lpj;
 	int      vdd;
-  unsigned axiclk_khz;
+	unsigned axiclk_khz;
 };
 
 struct regulator {
