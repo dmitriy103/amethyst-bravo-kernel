@@ -17,6 +17,9 @@
 #define __ASM_ARCH_MSM_GPIO_H
 
 #include <asm-generic/gpio.h>
+#include <mach/irqs.h>
+
+#define FIRST_BOARD_GPIO	NR_GPIO_IRQS
 
 #define gpio_get_value  __gpio_get_value
 #define gpio_set_value  __gpio_set_value

@@ -48,3 +48,7 @@ obj-$(CONFIG_AB8500_PWM)	+= ab8500-pwm.o
 obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
 obj-$(CONFIG_APANIC)		+= apanic.o
 obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
+obj-$(CONFIG_SENSORS_AKM8973)	+= akm8973.o
+obj-$(CONFIG_SENSORS_AKM8976)	+= akm8976.o
+obj-$(CONFIG_VP_A1026)		+= a1026.o
+obj-$(CONFIG_MSM_720P_CORE)	+= video_core/720p/

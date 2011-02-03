@@ -28,6 +28,7 @@ obj-$(CONFIG_USB_EG20T)		+= pch_udc.o
 obj-$(CONFIG_USB_PXA_U2O)	+= mv_udc.o
 mv_udc-y			:= mv_udc_core.o mv_udc_phy.o
 obj-$(CONFIG_USB_CI13XXX_MSM)	+= ci13xxx_msm.o
+obj-$(CONFIG_USB_MSM_72K)	+= msm72k_udc.o
 
 #
 # USB gadget drivers
@@ -72,3 +73,5 @@ obj-$(CONFIG_USB_ANDROID_ADB)	+= f_adb.o
 obj-$(CONFIG_USB_ANDROID_MASS_STORAGE)	+= f_mass_storage.o
 obj-$(CONFIG_USB_ANDROID_MTP)	+= f_mtp.o
 obj-$(CONFIG_USB_ANDROID_RNDIS)	+= f_rndis.o u_ether.o
+# MSM specific
+obj-$(CONFIG_USB_ANDROID_DIAG)	+= diag.o

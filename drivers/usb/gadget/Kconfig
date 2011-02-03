@@ -509,7 +509,7 @@ config USB_LANGWELL
 	select USB_GADGET_SELECTED
 
 config USB_GADGET_EG20T
-	boolean "Intel EG20T(Topcliff) USB Device controller"
+	boolean "Intel EG20T PCH/OKI SEMICONDUCTOR ML7213 IOH UDC"
 	depends on PCI
 	select USB_GADGET_DUALSPEED
 	help
@@ -524,6 +524,11 @@ config USB_GADGET_EG20T
 	  This driver supports both control transfer and bulk transfer modes.
 	  This driver dose not support interrupt transfer or isochronous
 	  transfer modes.
+
+	  This driver also can be used for OKI SEMICONDUCTOR's ML7213 which is
+	  for IVI(In-Vehicle Infotainment) use.
+	  ML7213 is companion chip for Intel Atom E6xx series.
+	  ML7213 is completely compatible for Intel EG20T PCH.
 
 config USB_EG20T
 	tristate
@@ -555,6 +560,24 @@ config USB_CI13XXX_MSM
 #
 # LAST -- dummy/emulated controller
 #
+
+config USB_GADGET_MSM_72K
+	boolean "MSM 72K Device Controller"
+	depends on ARCH_MSM
+	select USB_GADGET_SELECTED
+	select USB_GADGET_DUALSPEED
+	help
+	   USB gadget driver for Qualcomm MSM 72K architecture.
+
+	   Say "y" to link the driver statically, or "m" to build a
+	   dynamically linked module called "msm72k" and force all
+	   gadget drivers to also be dynamically linked.
+
+config USB_MSM_72K
+	tristate
+	depends on USB_GADGET_MSM_72K
+	default USB_GADGET
+	select USB_GADGET_SELECTED
 
 config USB_GADGET_DUMMY_HCD
 	boolean "Dummy HCD (DEVELOPMENT)"
@@ -915,6 +938,12 @@ config USB_ANDROID_ADB
 	depends on USB_ANDROID
 	help
 	  Provides adb function for android gadget driver.
+
+config USB_ANDROID_DIAG
+	boolean "USB MSM7K Diag Function"
+	depends on USB_ANDROID
+	help
+	  Qualcomm diagnostics interface support.
 
 config USB_ANDROID_MASS_STORAGE
 	boolean "Android gadget mass storage function"
