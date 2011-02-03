@@ -430,10 +430,6 @@ static int compact_finished(struct zone *zone,
 	if (!zone_watermark_ok(zone, cc->order, watermark, 0, 0))
 		return COMPACT_CONTINUE;
 
-	/*
-	 * order == -1 is expected when compacting via
-	 * /proc/sys/vm/compact_memory
-	 */
 	if (cc->order == -1)
 		return COMPACT_CONTINUE;
 
@@ -484,13 +480,6 @@ static unsigned long compaction_suitable(struct zone *zone, int order)
 	watermark = low_wmark_pages(zone) + (2UL << order);
 	if (!zone_watermark_ok(zone, 0, watermark, 0, 0))
 		return COMPACT_SKIPPED;
-
-	/*
-	 * order == -1 is expected when compacting via
-	 * /proc/sys/vm/compact_memory
-	 */
-	if (order == -1)
-		return COMPACT_CONTINUE;
 
 	/*
 	 * fragmentation index determines if allocation failures are due to
@@ -550,13 +539,12 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 
 	while ((ret = compact_finished(zone, cc)) == COMPACT_CONTINUE) {
 		unsigned long nr_migrate, nr_remaining;
-		int err;
 
 		if (!isolate_migratepages(zone, cc))
 			continue;
 
 		nr_migrate = cc->nr_migratepages;
-		err = migrate_pages(&cc->migratepages, compaction_alloc,
+		migrate_pages(&cc->migratepages, compaction_alloc,
 				(unsigned long)cc, false,
 <<<<<<< HEAD
 				cc->sync);
@@ -574,7 +562,7 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 						nr_remaining);
 
 		/* Release LRU pages not migrated */
-		if (err) {
+		if (!list_empty(&cc->migratepages)) {
 			putback_lru_pages(&cc->migratepages);
 			cc->nr_migratepages = 0;
 		}
