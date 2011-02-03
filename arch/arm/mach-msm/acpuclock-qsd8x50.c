@@ -548,7 +548,7 @@ void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *clkdata)
 
 	acpuclk_init();
 	acpuclk_init_cpufreq_table();
-	drv_state.clk_ebi1 = clk_get(NULL,"ebi1_clk");
+
 #ifdef CONFIG_MSM_CPU_AVS
 	if (!acpu_avs_init(drv_state.acpu_set_vdd,
 		drv_state.current_speed->acpu_khz)) {
