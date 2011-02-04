@@ -1,10 +1,9 @@
 #!/bin/bash
-rm ZipBuilder/system/lib/modules/*
-cp */*/*/*/*.ko ZipBuilder/system/lib/modules/
-cp */*/*/*.ko ZipBuilder/system/lib/modules/
-cp */*/*.ko ZipBuilder/system/lib/modules/
+ARCH=arm make modules_install INSTALL_MOD_PATH=ZipBuilder/system
 cd ZipBuilder
-/home/stevec/dev/android-ndk-r5/toolchains/arm-eabi-4.4.0/prebuilt/linux-x86/bin/arm-eabi-strip --strip-unneeded system/lib/modules/*
+rm system/lib/modules/*/modules.*
+rm -r system/lib/modules/*/build
+rm -r system/lib/modules/*/source
 
 dirCheck=( "kernel" "META-INF" "META-INF/com" "META-INF/com/google" "META-INF/com/google/android" "system/" "system/lib" "system/lib/modules" )
 
@@ -42,16 +41,6 @@ then
   cp ../arch/arm/boot/zImage ./kernel/
 else
   cp ../arch/arm/boot/zImage ./kernel/
-fi
-
-if [ -f ./system/lib/modules/bcm4329.ko ] 
-then 
-  echo bcm4329.ko exists! 
-  rm ./system/lib/modules/bcm4329.ko
-  echo Removed!
-  cp ../drivers/net/wireless/bcm4329/bcm4329.ko ./system/lib/modules/
-else
-  cp ../drivers/net/wireless/bcm4329/bcm4329.ko ./system/lib/modules/
 fi
 
 if [ -f ./update.zip ] 
