@@ -97,11 +97,10 @@ struct clkctl_acpu_speed {
 
 
 struct clkctl_acpu_speed acpu_vdd_tbl[] = {
-	{  19200, 950, 950 },
-	{ 128000, 950, 950 },
-	{ 245000, 950, 975 },
-	{ 256000, 950, 975 },
-	{ 384000, 950, 1000 },
+	{  19200, VOLTAGE_MIN, VOLTAGE_MIN },
+	{ 128000, VOLTAGE_MIN, VOLTAGE_MIN },
+	{ 245000, VOLTAGE_MIN, VOLTAGE_MIN },
+	{ 384000, VOLTAGE_MIN, 1000 },
 	{ 422400, 950, 1000 },
 	{ 460800, 975, 1025 },
 	{ 499200, 1000, 1050 },
@@ -118,6 +117,11 @@ struct clkctl_acpu_speed acpu_vdd_tbl[] = {
 	{ 921600, 1225, 1275 },
 	{ 960000, 1225, 1275 },
 	{ 998400, 1225, 1275 },
+	{ 1036800, 1275, VOLTAGE_MAX },
+	{ 1075200, 1275, VOLTAGE_MAX },
+	{ 1113600, 1275, VOLTAGE_MAX },
+	{ 1152000, 1300, VOLTAGE_MAX},
+	{ 1190400, VOLTAGE_MAX, VOLTAGE_MAX },
 	{ 0 },
 };
 
