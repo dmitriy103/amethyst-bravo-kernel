@@ -43,6 +43,16 @@ else
   cp ../arch/arm/boot/zImage ./kernel/
 fi
 
+if [ -f ./system/lib/modules/bcm4329.ko ] 
+then 
+  echo bcm4329.ko exists! 
+  rm ./system/lib/modules/bcm4329.ko
+  echo Removed!
+  cp ../drivers/net/wireless/bcm4329/bcm4329.ko ./system/lib/modules/
+else
+  cp ../drivers/net/wireless/bcm4329/bcm4329.ko ./system/lib/modules/
+fi
+
 if [ -f ./update.zip ] 
 then 
   echo update.zip exists! 
