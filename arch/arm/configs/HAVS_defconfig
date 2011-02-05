@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux/arm 2.6.38-rc3 Kernel Configuration
-# Fri Feb  4 12:57:24 2011
+# Sat Feb  5 13:43:16 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -168,9 +168,11 @@ CONFIG_LBDAF=y
 CONFIG_IOSCHED_NOOP=y
 # CONFIG_IOSCHED_DEADLINE is not set
 CONFIG_IOSCHED_CFQ=y
-CONFIG_DEFAULT_CFQ=y
+CONFIG_IOSCHED_VR=y
+# CONFIG_DEFAULT_CFQ is not set
+CONFIG_DEFAULT_VR=y
 # CONFIG_DEFAULT_NOOP is not set
-CONFIG_DEFAULT_IOSCHED="cfq"
+CONFIG_DEFAULT_IOSCHED="vr"
 # CONFIG_INLINE_SPIN_TRYLOCK is not set
 # CONFIG_INLINE_SPIN_TRYLOCK_BH is not set
 # CONFIG_INLINE_SPIN_LOCK is not set
@@ -1360,8 +1362,8 @@ CONFIG_IR_LIRC_CODEC=y
 # Qualcomm MSM Camera And Video
 #
 CONFIG_MSM_CAMERA=y
-# CONFIG_MSM_CAMERA_DEBUG is not set
 CONFIG_720P_CAMERA=y
+# CONFIG_MSM_CAMERA_DEBUG is not set
 
 #
 # Camera Sensor Selection
@@ -1370,6 +1372,10 @@ CONFIG_720P_CAMERA=y
 # CONFIG_MT9D112 is not set
 # CONFIG_MT9P012 is not set
 CONFIG_S5K3E2FX=y
+# CONFIG_S5K6AAFX is not set
+# CONFIG_OV8810 is not set
+# CONFIG_OV9665 is not set
+# CONFIG_S5K3H1GX is not set
 
 #
 # Graphics support
