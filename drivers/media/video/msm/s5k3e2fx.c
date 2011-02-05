@@ -2317,7 +2317,7 @@ static int s5k3e2fx_setting(enum msm_s_reg_update rupdate,
 	return rc;
 }
 
-static int s5k3e2fx_sensor_open_init(const struct msm_camera_sensor_info *data)
+static int s5k3e2fx_sensor_open_init(struct msm_camera_sensor_info *data)
 {
 	int rc;
 
@@ -2901,7 +2901,7 @@ static int s5k3e2fx_sensor_config(void __user *argp)
 	return rc;
 }
 
-static int s5k3e2fx_sensor_probe(const struct msm_camera_sensor_info *info,
+static int s5k3e2fx_sensor_probe(struct msm_camera_sensor_info *info,
 				 struct msm_sensor_ctrl *s)
 {
 	int rc = 0;
