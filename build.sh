@@ -1,8 +1,6 @@
 #!/bin/sh
 # Very simple build script
 
-cp arch/arm/mach-msm/avs.c.standard arch/arm/mach-msm/avs.c
-cp arch/arm/mach-msm/avs.h.925 arch/arm/mach-msm/avs.h
 ARCH=arm make defconfig HAVS_defconfig
 ARCH=arm make -j2
 ZipBuilder/builder.sh
