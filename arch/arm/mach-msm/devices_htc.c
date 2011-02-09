@@ -329,10 +329,12 @@ void __init msm_add_mem_devices(struct msm_pmem_setting *setting)
 }
 
 #define PM_LIBPROG      0x30000061
+#if defined(CONFIG_MSM_AMSS_VERSION)
 #if (CONFIG_MSM_AMSS_VERSION == 6220) || (CONFIG_MSM_AMSS_VERSION == 6225)
 #define PM_LIBVERS      0xfb837d0b
 #else
 #define PM_LIBVERS      0x10001
+#endif
 #endif
 
 #if 0

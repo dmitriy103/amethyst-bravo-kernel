@@ -619,7 +619,7 @@ void msm_pm_flush_console(void)
 	console_unlock();
 }
 
-static void msm_pm_restart(char str)
+static void msm_pm_restart(char str, const char *cmd)
 {
 	msm_pm_flush_console();
 

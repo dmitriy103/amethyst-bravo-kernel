@@ -58,17 +58,17 @@ static struct vreg *vreg_lcm_aux_2v6;
 
 extern int panel_type;
 
-static int is_sony_spi()
+static int is_sony_spi(void)
 {
 	return (panel_type & SONY_PWM_SPI ? 1 : 0);
 }
 
-static int is_sony_with_gamma()
+/*static int is_sony_with_gamma(void)
 {
 	return (panel_type & SONY_GAMMA ? 1 : 0);
-}
+}*/
 
-static int is_sony_RGB666()
+static int is_sony_RGB666(void)
 {
 	return (panel_type & SONY_RGB666 ? 1 : 0);
 }
