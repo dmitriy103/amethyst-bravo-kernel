@@ -170,7 +170,7 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static void dump_tssc_regs(struct msm_ts *ts)
+/*static void dump_tssc_regs(struct msm_ts *ts)
 {
 #define __dump_tssc_reg(r) \
 		do { printk(#r " %x\n", tssc_readl(ts, (r))); } while(0)
@@ -182,7 +182,7 @@ static void dump_tssc_regs(struct msm_ts *ts)
 	__dump_tssc_reg(TSSC_AVG_12);
 	__dump_tssc_reg(TSSC_AVG_34);
 #undef __dump_tssc_reg
-}
+}*/
 
 static int __devinit msm_ts_hw_init(struct msm_ts *ts)
 {
