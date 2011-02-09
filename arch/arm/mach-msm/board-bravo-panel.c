@@ -63,10 +63,10 @@ static int is_sony_spi(void)
 	return (panel_type & SONY_PWM_SPI ? 1 : 0);
 }
 
-static int is_sony_with_gamma(void)
+/*static int is_sony_with_gamma(void)
 {
 	return (panel_type & SONY_GAMMA ? 1 : 0);
-}
+}*/
 
 static int is_sony_RGB666(void)
 {
