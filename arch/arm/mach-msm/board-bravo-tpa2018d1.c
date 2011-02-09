@@ -39,7 +39,7 @@ static char spk_amp_cfg[8];
 static const char spk_amp_on[8] = { /* same length as spk_amp_cfg */
 	0x01, 0xc3, 0x20, 0x01, 0x00, 0x08, 0x1a, 0x21
 };
-static const char spk_amp_off[] = {0x01, 0xa2};
+static char spk_amp_off[] = {0x01, 0xa2};
 
 static DEFINE_MUTEX(spk_amp_lock);
 static int tpa2018d1_opened;
@@ -48,7 +48,7 @@ static int tpa2018d1_num_modes;
 
 #define DEBUG 0
 
-static int tpa2018_i2c_write(const char *txData, int length)
+static int tpa2018_i2c_write(char *txData, int length)
 {
 	struct i2c_msg msg[] = {
 		{
