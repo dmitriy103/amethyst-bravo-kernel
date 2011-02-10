@@ -611,7 +611,7 @@ void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *clkdata)
 
 }
 
-#ifdef CONFIG_CPU_FREQ_VDD_LEVELS
+#if defined(CONFIG_CPU_FREQ_VDD_LEVELS) && !defined(CONFIG_MSM_CPU_AVS)
 
 ssize_t acpuclk_get_vdd_levels_str(char *buf)
 {
