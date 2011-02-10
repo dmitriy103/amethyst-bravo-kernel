@@ -41,7 +41,7 @@ enum flashlight_mode_flags {
 };
 
 struct flashlight_platform_data {
-	void (*gpio_init) (void);
+	int (*gpio_init) (void);
 	uint32_t torch;
 	uint32_t flash;
 	uint32_t flash_adj;
