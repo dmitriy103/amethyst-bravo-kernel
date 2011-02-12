@@ -834,7 +834,6 @@ int mmc_attach_sdio(struct mmc_host *host)
 	 */
 	mmc_release_host(host);
 	err = mmc_add_card(host->card);
-	mmc_claim_host(host);
 	if (err)
 		goto remove_added;
 
@@ -845,7 +844,7 @@ int mmc_attach_sdio(struct mmc_host *host)
 		err = sdio_add_func(host->card->sdio_func[i]);
 		if (err)
 			goto remove_added;
-	}
+		}
 	mmc_claim_host(host);
 	return 0;
 
