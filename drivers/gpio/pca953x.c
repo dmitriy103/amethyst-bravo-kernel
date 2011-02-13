@@ -60,7 +60,6 @@ struct pca953x_chip {
 	unsigned gpio_start;
 	uint16_t reg_output;
 	uint16_t reg_direction;
-	struct mutex i2c_lock;
 
 #ifdef CONFIG_GPIO_PCA953X_IRQ
 	struct mutex irq_lock;
@@ -120,17 +119,13 @@ static int pca953x_gpio_direction_input(struct gpio_chip *gc, unsigned off)
 
 	chip = container_of(gc, struct pca953x_chip, gpio_chip);
 
-	mutex_lock(&chip->i2c_lock);
 	reg_val = chip->reg_direction | (1u << off);
 	ret = pca953x_write_reg(chip, PCA953X_DIRECTION, reg_val);
 	if (ret)
-		goto exit;
+		return ret;
 
 	chip->reg_direction = reg_val;
-	ret = 0;
-exit:
-	mutex_unlock(&chip->i2c_lock);
-	return ret;
+	return 0;
 }
 
 static int pca953x_gpio_direction_output(struct gpio_chip *gc,
@@ -142,7 +137,6 @@ static int pca953x_gpio_direction_output(struct gpio_chip *gc,
 
 	chip = container_of(gc, struct pca953x_chip, gpio_chip);
 
-	mutex_lock(&chip->i2c_lock);
 	/* set output level */
 	if (val)
 		reg_val = chip->reg_output | (1u << off);
@@ -151,7 +145,7 @@ static int pca953x_gpio_direction_output(struct gpio_chip *gc,
 
 	ret = pca953x_write_reg(chip, PCA953X_OUTPUT, reg_val);
 	if (ret)
-		goto exit;
+		return ret;
 
 	chip->reg_output = reg_val;
 
@@ -159,13 +153,10 @@ static int pca953x_gpio_direction_output(struct gpio_chip *gc,
 	reg_val = chip->reg_direction & ~(1u << off);
 	ret = pca953x_write_reg(chip, PCA953X_DIRECTION, reg_val);
 	if (ret)
-		goto exit;
+		return ret;
 
 	chip->reg_direction = reg_val;
-	ret = 0;
-exit:
-	mutex_unlock(&chip->i2c_lock);
-	return ret;
+	return 0;
 }
 
 static int pca953x_gpio_get_value(struct gpio_chip *gc, unsigned off)
@@ -176,9 +167,7 @@ static int pca953x_gpio_get_value(struct gpio_chip *gc, unsigned off)
 
 	chip = container_of(gc, struct pca953x_chip, gpio_chip);
 
-	mutex_lock(&chip->i2c_lock);
 	ret = pca953x_read_reg(chip, PCA953X_INPUT, &reg_val);
-	mutex_unlock(&chip->i2c_lock);
 	if (ret < 0) {
 		/* NOTE:  diagnostic already emitted; that's all we should
 		 * do unless gpio_*_value_cansleep() calls become different
@@ -198,7 +187,6 @@ static void pca953x_gpio_set_value(struct gpio_chip *gc, unsigned off, int val)
 
 	chip = container_of(gc, struct pca953x_chip, gpio_chip);
 
-	mutex_lock(&chip->i2c_lock);
 	if (val)
 		reg_val = chip->reg_output | (1u << off);
 	else
@@ -206,11 +194,9 @@ static void pca953x_gpio_set_value(struct gpio_chip *gc, unsigned off, int val)
 
 	ret = pca953x_write_reg(chip, PCA953X_OUTPUT, reg_val);
 	if (ret)
-		goto exit;
+		return;
 
 	chip->reg_output = reg_val;
-exit:
-	mutex_unlock(&chip->i2c_lock);
 }
 
 static void pca953x_setup_gpio(struct pca953x_chip *chip, int gpios)
@@ -530,8 +516,6 @@ static int __devinit pca953x_probe(struct i2c_client *client,
 	chip->gpio_start = pdata->gpio_base;
 
 	chip->names = pdata->names;
-
-	mutex_init(&chip->i2c_lock);
 
 	/* initialize cached registers from their original values.
 	 * we can't share this chip with another i2c master.

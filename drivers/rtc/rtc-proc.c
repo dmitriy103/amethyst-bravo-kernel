@@ -81,16 +81,12 @@ static int rtc_proc_show(struct seq_file *seq, void *offset)
 
 static int rtc_proc_open(struct inode *inode, struct file *file)
 {
-	int ret;
 	struct rtc_device *rtc = PDE(inode)->data;
 
 	if (!try_module_get(THIS_MODULE))
 		return -ENODEV;
 
-	ret = single_open(file, rtc_proc_show, rtc);
-	if (ret)
-		module_put(THIS_MODULE);
-	return ret;
+	return single_open(file, rtc_proc_show, rtc);
 }
 
 static int rtc_proc_release(struct inode *inode, struct file *file)

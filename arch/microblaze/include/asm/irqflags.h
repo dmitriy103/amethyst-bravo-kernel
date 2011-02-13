@@ -12,7 +12,7 @@
 #include <linux/types.h>
 #include <asm/registers.h>
 
-#if CONFIG_XILINX_MICROBLAZE0_USE_MSR_INSTR
+#ifdef CONFIG_XILINX_MICROBLAZE0_USE_MSR_INSTR
 
 static inline unsigned long arch_local_irq_save(void)
 {
