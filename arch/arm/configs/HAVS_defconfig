@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
-# Linux/arm 2.6.38-rc3 Kernel Configuration
-# Mon Feb  7 12:44:53 2011
+# Linux/arm 2.6.38-rc4 Kernel Configuration
+# Sun Feb 13 10:31:23 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -333,6 +333,10 @@ CONFIG_WIFI_CONTROL_FUNC=y
 # CONFIG_WIFI_MEM_PREALLOC is not set
 CONFIG_ARCH_MSM_FLASHLIGHT=y
 # CONFIG_VIRTUAL_KPANIC_PARTITION is not set
+
+#
+# System MMU
+#
 
 #
 # Processor Type
@@ -1343,20 +1347,7 @@ CONFIG_MEDIA_SUPPORT=y
 #
 # Multimedia drivers
 #
-CONFIG_RC_CORE=y
-CONFIG_LIRC=y
-CONFIG_RC_MAP=y
-CONFIG_IR_NEC_DECODER=y
-CONFIG_IR_RC5_DECODER=y
-CONFIG_IR_RC6_DECODER=y
-CONFIG_IR_JVC_DECODER=y
-CONFIG_IR_SONY_DECODER=y
-CONFIG_IR_RC5_SZ_DECODER=y
-CONFIG_IR_LIRC_CODEC=y
-# CONFIG_IR_IMON is not set
-# CONFIG_IR_MCEUSB is not set
-# CONFIG_IR_STREAMZAP is not set
-# CONFIG_RC_LOOPBACK is not set
+# CONFIG_RC_CORE is not set
 
 #
 # Qualcomm MSM Camera And Video
@@ -1648,7 +1639,6 @@ CONFIG_ANDROID_LOW_MEMORY_KILLER=y
 # Texas Instruments shared transport line discipline
 #
 # CONFIG_ST_BT is not set
-# CONFIG_LIRC_STAGING is not set
 # CONFIG_SMB_FS is not set
 CONFIG_MACH_NO_WESTBRIDGE=y
 # CONFIG_ATH6K_LEGACY is not set
