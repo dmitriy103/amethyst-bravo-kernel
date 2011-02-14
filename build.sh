@@ -3,6 +3,8 @@
 
 git checkout couttstech-2.6.38-ginger
 
+ARCH=arm make clean
+
 ARCH=arm make defconfig HAVS_defconfig
 ARCH=arm make -j2
 ZipBuilder/builder.sh
@@ -15,15 +17,19 @@ cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.38_OC1190_SVS_Ginger_CF
 
 git checkout couttstech-2.6.38-froyo
 
-ARCH=arm make defconfig HAVS_defconfig
+ARCH=arm make clean
+
+ARCH=arm make defconfig HAVS_Froyo_defconfig
 ARCH=arm make -j2
 ZipBuilder/builder.sh
 cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.38_OC1190_HAVS_Froyo_CFS_VR_SLQB.zip
 
-ARCH=arm make defconfig SVS_defconfig
+ARCH=arm make defconfig SVS_Froyo_defconfig
 ARCH=arm make -j2
 ZipBuilder/builder.sh
 cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.38_OC1190_SVS_Froyo_CFS_VR_SLQB.zip
+
+ARCH=arm make clean
 
 git checkout couttstech-2.6.38-ginger
 
