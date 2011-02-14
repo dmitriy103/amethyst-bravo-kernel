@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux/arm 2.6.38-rc4 Kernel Configuration
-# Sun Feb 13 10:31:23 2011
+# Mon Feb 14 13:05:06 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -64,10 +64,11 @@ CONFIG_HAVE_SPARSE_IRQ=y
 #
 # RCU Subsystem
 #
+CONFIG_CLASSIC_RCU=y
 # CONFIG_TREE_PREEMPT_RCU is not set
 # CONFIG_TINY_RCU is not set
-CONFIG_TINY_PREEMPT_RCU=y
-CONFIG_PREEMPT_RCU=y
+# CONFIG_TINY_PREEMPT_RCU is not set
+# CONFIG_PREEMPT_RCU is not set
 # CONFIG_RCU_TRACE is not set
 # CONFIG_TREE_RCU_TRACE is not set
 # CONFIG_RCU_BOOST is not set
