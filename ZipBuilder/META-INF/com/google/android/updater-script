@@ -1,4 +1,4 @@
-ui_print("couttstech.com Kernel Installer");
+ui_print("couttstech.com Kernel Installer - by Koush");
 ui_print("Extracting System Files...");
 set_progress(1.000000);
 mount("MTD", "system", "/system");
