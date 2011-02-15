@@ -647,35 +647,6 @@ wl_iw_get_macaddr(
 	return error;
 }
 
-<<<<<<< HEAD
-static int
-wl_iw_set_country_code(struct net_device *dev, char *ccode)
-{
-	char country_code[WLC_CNTRY_BUF_SZ];
-	int ret = -1;
-
-	WL_TRACE(("%s\n", __FUNCTION__));
-	if (!ccode)
-		ccode = dhd_bus_country_get(dev);
-	strncpy(country_code, ccode, sizeof(country_code));
-	if (ccode && (country_code[0] != 0)) {
-#ifdef CONFIG_US_NON_DFS_CHANNELS_ONLY
-		if (use_non_dfs_channels && !strncmp(country_code, "US", 2))
-			strncpy(country_code, "US/69", WLC_CNTRY_BUF_SZ);
-		if (!use_non_dfs_channels && !strncmp(country_code, "US/69", 2))
-			strncpy(country_code, "US", WLC_CNTRY_BUF_SZ);
-#endif
-		ret = dev_wlc_ioctl(dev, WLC_SET_COUNTRY, &country_code, sizeof(country_code));
-		if (ret >= 0) {
-			WL_TRACE(("%s: set country %s OK\n", __FUNCTION__, country_code));
-			dhd_bus_country_set(dev, &country_code[0]);
-		}
-	}
-	return ret;
-}
-=======
->>>>>>> 60463e0... net: wireless: bcm4329: Update to version 4.218.248-23
-
 static int
 wl_iw_set_country(
 	struct net_device *dev,
