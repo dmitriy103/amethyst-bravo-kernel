@@ -1,6 +1,7 @@
 #!/bin/sh
 # Very simple build script
 
+ARCH=arm make clean
 ARCH=arm make defconfig HAVS_defconfig
 ARCH=arm make -j2
 ZipBuilder/builder.sh
@@ -23,6 +24,7 @@ cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.37_OC1190_SVS_Ginger_BF
 
 git checkout couttstech-2.6.37-froyo
 
+ARCH=arm make clean
 ARCH=arm make defconfig HAVS_defconfig
 ARCH=arm make -j2
 ZipBuilder/builder.sh
@@ -43,3 +45,4 @@ ARCH=arm make -j2
 ZipBuilder/builder.sh
 cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.37_OC1190_SVS_Froyo_BFS_VR_SLQB.zip
 
+ARCH=arm make clean
