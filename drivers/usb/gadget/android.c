@@ -410,6 +410,7 @@ void android_enable_function(struct usb_function *f, int enable)
 {
 	struct android_dev *dev = _android_dev;
 	int disable = !enable;
+	int product_id;
 
 	if (!!f->disabled != disable) {
 		usb_function_set_enabled(f, !disable);
