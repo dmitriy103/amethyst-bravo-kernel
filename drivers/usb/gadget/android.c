@@ -290,7 +290,7 @@ static int android_bind(struct usb_composite_dev *cdev)
 {
 	struct android_dev *dev = _android_dev;
 	struct usb_gadget	*gadget = cdev->gadget;
-	int			gcnum, id, ret;
+	int			gcnum, id, product_id, ret;
 
 	printk(KERN_INFO "android_bind\n");
 
