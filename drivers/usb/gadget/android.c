@@ -66,7 +66,6 @@ struct android_dev {
 	char **functions;
 
 	int product_id;
-	int vendor_id;
 	int version;
 };
 
@@ -255,21 +254,6 @@ static int product_matches_functions(struct android_usb_product *p)
 	return 1;
 }
 
-static int get_vendor_id(struct android_dev *dev)
-{
-        struct android_usb_product *p = dev->products;
-        int count = dev->num_products;
-        int i;
-         if (p) {
-                for (i = 0; i < count; i++, p++) {
-                        if (p->vendor_id && product_matches_functions(p))
-                                return p->vendor_id;
-                }
-        }
-        /* use default vendor ID */
-        return dev->vendor_id;
-}
-
 static int get_product_id(struct android_dev *dev)
 {
 	struct android_usb_product *p = dev->products;
@@ -290,7 +274,7 @@ static int android_bind(struct usb_composite_dev *cdev)
 {
 	struct android_dev *dev = _android_dev;
 	struct usb_gadget	*gadget = cdev->gadget;
-	int			gcnum, id, ret;
+	int			gcnum, id, product_id, ret;
 
 	printk(KERN_INFO "android_bind\n");
 
@@ -410,6 +394,7 @@ void android_enable_function(struct usb_function *f, int enable)
 {
 	struct android_dev *dev = _android_dev;
 	int disable = !enable;
+	int product_id;
 
 	if (!!f->disabled != disable) {
 		usb_function_set_enabled(f, !disable);
