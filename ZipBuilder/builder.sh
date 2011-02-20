@@ -2,7 +2,7 @@
 rm -r ZipBuilder/system/lib/modules/*
 ARCH=arm make modules_install INSTALL_MOD_PATH=ZipBuilder/system
 cd ZipBuilder
-#rm system/lib/modules/*/modules.*
+rm system/lib/modules/*/modules.*
 rm -r system/lib/modules/*/build
 rm -r system/lib/modules/*/source
 #/home/stevec/dev/android-ndk-r5/toolchains/arm-eabi-4.4.0/prebuilt/linux-x86/bin/arm-eabi-strip --strip-unneeded system/lib/modules/*
