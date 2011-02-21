@@ -1615,7 +1615,7 @@ CONFIG_ANDROID_LOW_MEMORY_KILLER=y
 # CONFIG_POHMELFS is not set
 # CONFIG_AUTOFS_FS is not set
 # CONFIG_IIO is not set
-# CONFIG_ZRAM is not set
+CONFIG_ZRAM=m
 # CONFIG_BATMAN_ADV is not set
 # CONFIG_FB_SM7XX is not set
 
