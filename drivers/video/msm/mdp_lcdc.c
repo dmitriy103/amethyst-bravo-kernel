@@ -246,8 +246,10 @@ static void lcdc_dma_start(void *priv, uint32_t addr, uint32_t stride,
 			   uint32_t y)
 {
 	struct mdp_lcdc_info *lcdc = priv;
+#ifndef CONFIG_MSM_MDP31
 	struct mdp_info *mdp = lcdc->mdp;
 	uint32_t dma2_cfg;
+#endif
 
 #ifdef CONFIG_MSM_MDP31
 	if (lcdc->mdp->dma_format_dirty) {
