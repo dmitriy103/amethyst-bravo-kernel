@@ -544,7 +544,10 @@ int a1026_filter_vp_cmd(int cmd, int mode)
 
 int a1026_set_config(char newid, int mode)
 {
-	int i = 0, rc = 0, size = 0;
+#if DEBUG
+	int i = 0;
+#endif
+	int rc = 0, size = 0;
 	int number_of_cmd_sets, rd_retry_cnt;
 	unsigned int sw_reset = 0;
 	unsigned char *i2c_cmds;

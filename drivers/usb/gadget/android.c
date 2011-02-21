@@ -290,7 +290,7 @@ static int android_bind(struct usb_composite_dev *cdev)
 {
 	struct android_dev *dev = _android_dev;
 	struct usb_gadget	*gadget = cdev->gadget;
-	int			gcnum, id, ret;
+	int			gcnum, id, product_id, ret;
 
 	printk(KERN_INFO "android_bind\n");
 
@@ -340,9 +340,8 @@ static int android_bind(struct usb_composite_dev *cdev)
 
 	usb_gadget_set_selfpowered(gadget);
 	dev->cdev = cdev;
-	device_desc.idVendor = __constant_cpu_to_le16(get_vendor_id(dev));
-	device_desc.idProduct = __constant_cpu_to_le16(get_product_id(dev));
-	cdev->desc.idVendor = device_desc.idVendor;
+	product_id = get_product_id(dev);
+	device_desc.idProduct = __constant_cpu_to_le16(product_id);
 	cdev->desc.idProduct = device_desc.idProduct;
 
 	return 0;
@@ -411,6 +410,7 @@ void android_enable_function(struct usb_function *f, int enable)
 {
 	struct android_dev *dev = _android_dev;
 	int disable = !enable;
+	int product_id;
 
 	if (!!f->disabled != disable) {
 		usb_function_set_enabled(f, !disable);
@@ -432,12 +432,10 @@ void android_enable_function(struct usb_function *f, int enable)
 
 		update_dev_desc(dev);
 
-		device_desc.idVendor = __constant_cpu_to_le16(get_vendor_id(dev));
-		device_desc.idProduct = __constant_cpu_to_le16(get_product_id(dev));
-		if (dev->cdev) {
-			dev->cdev->desc.idVendor = device_desc.idVendor;
+		product_id = get_product_id(dev);
+		device_desc.idProduct = __constant_cpu_to_le16(product_id);
+		if (dev->cdev)
 			dev->cdev->desc.idProduct = device_desc.idProduct;
-		}
 		usb_composite_force_reset(dev->cdev);
 	}
 }
