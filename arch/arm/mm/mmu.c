@@ -22,6 +22,7 @@
 #include <asm/setup.h>
 #include <asm/sizes.h>
 #include <asm/smp_plat.h>
+#include <linux/pagemap.h>
 #include <asm/tlb.h>
 #include <asm/highmem.h>
 #include <asm/traps.h>
