@@ -20,6 +20,7 @@
 #include <linux/memblock.h>
 #include <linux/sort.h>
 
+#include <linux/pagemap.h>
 #include <asm/mach-types.h>
 #include <asm/sections.h>
 #include <asm/setup.h>
