@@ -152,6 +152,55 @@ DEFINE_WBC_EVENT(wbc_balance_dirty_written);
 DEFINE_WBC_EVENT(wbc_balance_dirty_wait);
 DEFINE_WBC_EVENT(wbc_writepage);
 
+#define KBps(x)			((x) << (PAGE_SHIFT - 10))
+#define Bps(x)			((x) >> (BASE_BW_SHIFT - PAGE_SHIFT))
+
+TRACE_EVENT(dirty_throttle_bandwidth,
+
+	TP_PROTO(struct backing_dev_info *bdi,
+		 unsigned long dirty_bw,
+		 unsigned long long pos_bw,
+		 unsigned long long ref_bw),
+
+	TP_ARGS(bdi, dirty_bw, pos_bw, ref_bw),
+
+	TP_STRUCT__entry(
+		__array(char,			bdi, 32)
+		__field(unsigned long,		write_bw)
+		__field(unsigned long,		avg_bw)
+		__field(unsigned long,		dirty_bw)
+		__field(unsigned long long,	base_bw)
+		__field(unsigned long long,	pos_bw)
+		__field(unsigned long long,	ref_bw)
+		__field(unsigned long long,	avg_ref_bw)
+	),
+
+	TP_fast_assign(
+		strlcpy(__entry->bdi, dev_name(bdi->dev), 32);
+		__entry->write_bw	= KBps(bdi->write_bandwidth);
+		__entry->avg_bw		= KBps(bdi->avg_bandwidth);
+		__entry->dirty_bw	= KBps(dirty_bw);
+		__entry->base_bw	= Bps(bdi->throttle_bandwidth);
+		__entry->pos_bw		= Bps(pos_bw);
+		__entry->ref_bw		= Bps(ref_bw);
+		__entry->avg_ref_bw	= Bps(bdi->reference_bandwidth);
+	),
+
+
+	TP_printk("bdi %s: "
+		  "write_bw=%lu avg_bw=%lu dirty_bw=%lu "
+		  "base_bw=%llu pos_bw=%llu ref_bw=%llu aref_bw=%llu",
+		  __entry->bdi,
+		  __entry->write_bw,	/* bdi write bandwidth */
+		  __entry->avg_bw,	/* bdi avg write bandwidth */
+		  __entry->dirty_bw,	/* bdi dirty bandwidth */
+		  __entry->base_bw,	/* base throttle bandwidth */
+		  __entry->pos_bw,	/* position control bandwidth */
+		  __entry->ref_bw,	/* reference throttle bandwidth */
+		  __entry->avg_ref_bw	/* smoothed reference bandwidth */
+	)
+);
+
 DECLARE_EVENT_CLASS(writeback_congest_waited_template,
 
 	TP_PROTO(unsigned int usec_timeout, unsigned int usec_delayed),

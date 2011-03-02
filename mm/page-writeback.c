@@ -1068,6 +1068,7 @@ adjust:
 	bdi->throttle_bandwidth = bw;
 out:
 	bdi_update_reference_bandwidth(bdi, ref_bw);
+	trace_dirty_throttle_bandwidth(bdi, dirty_bw, pos_bw, ref_bw);
 }
 
 void bdi_update_bandwidth(struct backing_dev_info *bdi,
