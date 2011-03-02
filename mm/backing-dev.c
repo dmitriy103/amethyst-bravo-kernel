@@ -675,6 +675,9 @@ int bdi_init(struct backing_dev_info *bdi)
 	bdi->write_bandwidth = INIT_BW;
 	bdi->avg_bandwidth = INIT_BW;
 
+	bdi->avg_dirty = 0;
+	bdi->old_dirty = 0;
+
 	err = prop_local_init_percpu(&bdi->completions);
 
 	if (err) {
