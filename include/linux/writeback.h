@@ -46,6 +46,13 @@ extern spinlock_t inode_lock;
 #define DIRTY_MARGIN		(DIRTY_SCOPE * 4)
 
 /*
+ * The base throttle bandwidth will be 1000 times smaller than write bandwidth
+ * when there are 100 concurrent heavy dirtiers. This shift can work with up to
+ * 40 bits dirty size and 2^16 concurrent dirtiers.
+ */
+#define BASE_BW_SHIFT		24
+
+/*
  * fs/fs-writeback.c
  */
 enum writeback_sync_modes {

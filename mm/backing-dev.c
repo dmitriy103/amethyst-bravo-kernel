@@ -674,6 +674,7 @@ int bdi_init(struct backing_dev_info *bdi)
 
 	bdi->write_bandwidth = INIT_BW;
 	bdi->avg_bandwidth = INIT_BW;
+	bdi->throttle_bandwidth = (u64)INIT_BW << BASE_BW_SHIFT;
 
 	bdi->avg_dirty = 0;
 	bdi->old_dirty = 0;
