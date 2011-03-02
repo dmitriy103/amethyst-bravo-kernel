@@ -17,7 +17,7 @@ cp ZipBuilder/update_signed.zip ~/Dropbox/couttstech-2.6.38_OC1190_SVS_Ginger_CF
 
 ARCH=arm make clean
 
-RCH=arm make defconfig HAVS_BFS_defconfig
+ARCH=arm make defconfig HAVS_BFS_defconfig
 cp arch/arm/Kconfig arch/arm/Kconfig.old
 cp arch/arm/Kconfig.bfs arch/arm/Kconfig
 ARCH=arm make -j2
