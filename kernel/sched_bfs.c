@@ -4878,23 +4878,6 @@ void idle_task_exit(void)
 
 #endif /* CONFIG_HOTPLUG_CPU */
 
-/*
- * Ensures that the idle task is using init_mm right before its cpu goes
- * offline.
- */
-void idle_task_exit(void)
-{
-	struct mm_struct *mm = current->active_mm;
-
-	BUG_ON(cpu_online(smp_processor_id()));
-
-	if (mm != &init_mm)
-		switch_mm(mm, &init_mm, current);
-	mmdrop(mm);
-}
-
-#endif /* CONFIG_HOTPLUG_CPU */
-
 void sched_set_stop_task(int cpu, struct task_struct *stop)
 {
 	struct sched_param stop_param = { .sched_priority = STOP_PRIO };
