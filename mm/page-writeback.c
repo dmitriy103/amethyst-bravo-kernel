@@ -472,6 +472,24 @@ unsigned long bdi_dirty_limit(struct backing_dev_info *bdi, unsigned long dirty)
 	return bdi_dirty;
 }
 
+/*
+ * If we can dirty N more pages globally, honour N/8 to the bdi that runs low,
+ * so as to help it ramp up.
+ *
+ * It helps the chicken and egg problem: when bdi A (eg. /pub) is heavy dirtied
+ * and bdi B (eg. /) is light dirtied hence has 0 dirty limit, tasks writing to
+ * B always get heavily throttled and bdi B's dirty limit might never be able
+ * to grow up from 0.
+ */
+static unsigned long dirty_rampup_size(unsigned long dirty,
+				       unsigned long thresh)
+{
+	if (thresh > dirty + MIN_WRITEBACK_PAGES)
+		return min(MIN_WRITEBACK_PAGES * 2, (thresh - dirty) / 8);
+
+	return MIN_WRITEBACK_PAGES / 8;
+}
+
 static void bdi_update_dirty_smooth(struct backing_dev_info *bdi,
 				    unsigned long dirty)
 {
@@ -563,6 +581,50 @@ static void __bdi_update_write_bandwidth(struct backing_dev_info *bdi,
 	bdi->avg_bandwidth = avg;
 }
 
+static void update_dirty_limit(unsigned long thresh,
+			       unsigned long dirty)
+{
+	unsigned long limit = default_backing_dev_info.dirty_threshold;
+	unsigned long min = dirty + limit / DIRTY_MARGIN;
+
+	if (limit < thresh) {
+		limit = thresh;
+		goto out;
+	}
+
+	/* take care not to follow into the brake area */
+	if (limit > thresh + thresh / (DIRTY_MARGIN * 8) &&
+	    limit > min) {
+		limit -= (limit - max(thresh, min)) >> 3;
+		goto out;
+	}
+
+	return;
+out:
+	default_backing_dev_info.dirty_threshold = limit;
+}
+
+static void bdi_update_dirty_threshold(struct backing_dev_info *bdi,
+				       unsigned long thresh,
+				       unsigned long dirty)
+{
+	unsigned long old = bdi->old_dirty_threshold;
+	unsigned long avg = bdi->dirty_threshold;
+	unsigned long min;
+
+	min = dirty_rampup_size(dirty, thresh);
+	thresh = bdi_dirty_limit(bdi, thresh);
+
+	if (avg > old && old >= thresh)
+		avg -= (avg - old) >> 4;
+
+	if (avg < old && old <= thresh)
+		avg += (old - avg) >> 4;
+
+	bdi->dirty_threshold = max(avg, min);
+	bdi->old_dirty_threshold = thresh;
+}
+
 void bdi_update_bandwidth(struct backing_dev_info *bdi,
 			  unsigned long thresh,
 			  unsigned long dirty,
@@ -594,6 +656,10 @@ void bdi_update_bandwidth(struct backing_dev_info *bdi,
 	if (elapsed <= HZ/10)
 		goto unlock;
 
+	if (thresh) {
+		update_dirty_limit(thresh, dirty);
+		bdi_update_dirty_threshold(bdi, thresh, dirty);
+	}
 	__bdi_update_write_bandwidth(bdi, elapsed, written);
 	if (thresh) {
 		bdi_update_dirty_smooth(bdi, bdi_dirty);

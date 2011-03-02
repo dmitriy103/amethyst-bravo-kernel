@@ -12,6 +12,40 @@ struct backing_dev_info;
 extern spinlock_t inode_lock;
 
 /*
+ * 4MB minimal write chunk size
+ */
+#define MIN_WRITEBACK_PAGES	(4096UL >> (PAGE_CACHE_SHIFT - 10))
+
+/*
+ * The 1/4 region under the global dirty thresh is for smooth dirty throttling:
+ *
+ *		(thresh - 2*thresh/DIRTY_SCOPE, thresh)
+ *
+ * The 1/32 region under the global dirty limit will be more rigidly throttled:
+ *
+ *		(limit - limit/DIRTY_MARGIN, limit)
+ *
+ * The 1/32 region above the global dirty limit will be put to maximum pauses:
+ *
+ *		(limit, limit + limit/DIRTY_MARGIN)
+ *
+ * Further beyond, the dirtier task will enter a loop waiting (possibly long
+ * time) for the dirty pages to drop below (limit + limit/DIRTY_MARGIN).
+ *
+ * The last case may happen lightly when memory is very tight or at sudden
+ * workload rampup. Or under DoS situations such as a fork bomb where every new
+ * task dirties some more pages, or creating 10,000 tasks each writing to a USB
+ * key slowly in 4KB/s.
+ *
+ * The global dirty threshold is normally equal to global dirty limit, except
+ * when the system suddenly allocates a lot of anonymous memory and knocks down
+ * the global dirty threshold quickly, in which case the global dirty limit
+ * will follow down slowly to prevent livelocking all dirtier tasks.
+ */
+#define DIRTY_SCOPE		8
+#define DIRTY_MARGIN		(DIRTY_SCOPE * 4)
+
+/*
  * fs/fs-writeback.c
  */
 enum writeback_sync_modes {

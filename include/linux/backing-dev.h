@@ -81,6 +81,9 @@ struct backing_dev_info {
 	unsigned long avg_bandwidth;
 	unsigned long avg_dirty;
 	unsigned long old_dirty;
+	unsigned long dirty_threshold;
+	unsigned long old_dirty_threshold;
+
 
 	struct prop_local_percpu completions;
 	int dirty_exceeded;

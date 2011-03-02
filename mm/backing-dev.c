@@ -677,6 +677,7 @@ int bdi_init(struct backing_dev_info *bdi)
 
 	bdi->avg_dirty = 0;
 	bdi->old_dirty = 0;
+	bdi->dirty_threshold = MIN_WRITEBACK_PAGES;
 
 	err = prop_local_init_percpu(&bdi->completions);
 
