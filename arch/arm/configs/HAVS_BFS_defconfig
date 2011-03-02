@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux/arm 2.6.38-rc7 Kernel Configuration
-# Wed Mar  2 12:44:57 2011
+# Wed Mar  2 12:45:20 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -29,7 +29,7 @@ CONFIG_HAVE_IRQ_WORK=y
 #
 # General setup
 #
-# CONFIG_SCHED_BFS is not set
+CONFIG_SCHED_BFS=y
 CONFIG_EXPERIMENTAL=y
 CONFIG_BROKEN_ON_SMP=y
 CONFIG_LOCK_KERNEL=y
@@ -81,8 +81,10 @@ CONFIG_CGROUP_DEBUG=y
 CONFIG_CGROUP_FREEZER=y
 # CONFIG_CGROUP_DEVICE is not set
 # CONFIG_CPUSETS is not set
+# CONFIG_CGROUP_CPUACCT is not set
 CONFIG_RESOURCE_COUNTERS=y
 # CONFIG_CGROUP_MEM_RES_CTLR is not set
+# CONFIG_CGROUP_SCHED is not set
 # CONFIG_BLK_CGROUP is not set
 # CONFIG_NAMESPACES is not set
 # CONFIG_SCHED_AUTOGROUP is not set
