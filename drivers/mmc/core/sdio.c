@@ -834,7 +834,6 @@ int mmc_attach_sdio(struct mmc_host *host)
 	 */
 	mmc_release_host(host);
 	err = mmc_add_card(host->card);
-	mmc_claim_host(host);
 	if (err)
 		goto remove_added;
 
@@ -853,7 +852,6 @@ int mmc_attach_sdio(struct mmc_host *host)
 
 remove_added:
 	/* Remove without lock if the device has been added. */
-	mmc_release_host(host);
 	mmc_sdio_remove(host);
 	mmc_claim_host(host);
 remove:
