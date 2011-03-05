@@ -86,7 +86,7 @@ static int qspi_send(uint32_t id, uint8_t data)
 		}
 	}
 	writel((0x7000 | (id << 9) | data) << 16, spi_base + SPI_OUTPUT_FIFO);
-	udelay(100);
+	usleep(100);
 
 	return 0;
 }
@@ -104,7 +104,7 @@ static int qspi_send_9bit(uint32_t id, uint8_t data)
 		}
 	}
 	writel(((id << 8) | data) << 23, spi_base + SPI_OUTPUT_FIFO);
-	udelay(100);
+	usleep(100);
 
 	return 0;
 }
@@ -597,9 +597,9 @@ static int samsung_oled_panel_unblank(struct msm_lcdc_panel_ops *ops)
 	samsung_oled_panel_gpio_switch(1);
 
 	gpio_set_value(BRAVO_GPIO_LCD_RST_N, 1);
-	udelay(50);
+	usleep(50);
 	gpio_set_value(BRAVO_GPIO_LCD_RST_N, 0);
-	udelay(20);
+	usleep(20);
 	gpio_set_value(BRAVO_GPIO_LCD_RST_N, 1);
 	msleep(20);
 
@@ -795,7 +795,7 @@ static int sony_tft_panel_power(int on)
 		gpio_set_value(BRAVO_GPIO_LCD_RST_N, 1);
 		mdelay(10);
 		gpio_set_value(BRAVO_GPIO_LCD_RST_N, 0);
-		udelay(500);
+		usleep(500);
 		gpio_set_value(BRAVO_GPIO_LCD_RST_N, 1);
 		mdelay(10);
 		sony_tft_panel_config_gpio_table(
