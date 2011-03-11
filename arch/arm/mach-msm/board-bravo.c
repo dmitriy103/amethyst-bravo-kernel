@@ -606,20 +606,20 @@ static struct resource msm_camera_resources[] = {
 };
 
 static struct msm_camera_device_platform_data msm_camera_device_data = {
-	.camera_gpio_on  = config_camera_on_gpios,
-	.camera_gpio_off = config_camera_off_gpios,
-	.ioext.mdcphy = MSM_MDC_PHYS,
-	.ioext.mdcsz  = MSM_MDC_SIZE,
-	.ioext.appphy = MSM_CLK_CTL_PHYS,
-	.ioext.appsz  = MSM_CLK_CTL_SIZE,
+        .camera_gpio_on  = config_camera_on_gpios,
+        .camera_gpio_off = config_camera_off_gpios,
+        .ioext.mdcphy = MSM_MDC_PHYS,
+        .ioext.mdcsz  = MSM_MDC_SIZE,
+        .ioext.appphy = MSM_CLK_CTL_PHYS,
+        .ioext.appsz  = MSM_CLK_CTL_SIZE,
 };
 
-static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
+/*static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
 	.camera_flash		= flashlight_control,
 	.num_flash_levels	= FLASHLIGHT_NUM,
 	.low_temp_limit		= 5,
 	.low_cap_limit		= 15,
-};
+};*/
 
 static struct msm_camera_sensor_info msm_camera_sensor_s5k3e2fx_data = {
 	.sensor_name 	= "s5k3e2fx",
@@ -629,7 +629,8 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k3e2fx_data = {
 	.pdata 		= &msm_camera_device_data,
 	.resource 	= msm_camera_resources,
 	.num_resources 	= ARRAY_SIZE(msm_camera_resources),
-	.flash_cfg	= &msm_camera_sensor_flash_cfg,
+        .camera_flash = flashlight_control,
+        .num_flash_levels = FLASHLIGHT_NUM,
 };
 
 static struct platform_device msm_camera_sensor_s5k3e2fx = {
