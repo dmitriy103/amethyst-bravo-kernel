@@ -66,7 +66,6 @@ struct android_dev {
 	char **functions;
 
 	int product_id;
-	int vendor_id;
 	int version;
 };
 
@@ -253,21 +252,6 @@ static int product_matches_functions(struct android_usb_product *p)
 			return 0;
 	}
 	return 1;
-}
-
-static int get_vendor_id(struct android_dev *dev)
-{
-        struct android_usb_product *p = dev->products;
-        int count = dev->num_products;
-        int i;
-         if (p) {
-                for (i = 0; i < count; i++, p++) {
-                        if (p->vendor_id && product_matches_functions(p))
-                                return p->vendor_id;
-                }
-        }
-        /* use default vendor ID */
-        return dev->vendor_id;
 }
 
 static int get_product_id(struct android_dev *dev)
