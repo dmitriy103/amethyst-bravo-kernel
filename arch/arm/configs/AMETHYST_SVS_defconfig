@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
-# Linux/arm 2.6.38-rc8 Kernel Configuration
-# Fri Mar 11 12:34:33 2011
+# Linux/arm 2.6.38 Kernel Configuration
+# Wed Mar 16 13:52:38 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -338,6 +338,10 @@ CONFIG_WIFI_CONTROL_FUNC=y
 # CONFIG_WIFI_MEM_PREALLOC is not set
 CONFIG_ARCH_MSM_FLASHLIGHT=y
 # CONFIG_VIRTUAL_KPANIC_PARTITION is not set
+
+#
+# System MMU
+#
 
 #
 # Processor Type
@@ -1850,9 +1854,9 @@ CONFIG_FRAME_WARN=1024
 CONFIG_MAGIC_SYSRQ=y
 # CONFIG_STRIP_ASM_SYMS is not set
 # CONFIG_UNUSED_SYMBOLS is not set
-# CONFIG_DEBUG_FS is not set
+CONFIG_DEBUG_FS=y
 # CONFIG_HEADERS_CHECK is not set
-# CONFIG_DEBUG_KERNEL is not set
+CONFIG_DEBUG_KERNEL=y
 # CONFIG_HARDLOCKUP_DETECTOR is not set
 # CONFIG_SLQB_DEBUG is not set
 # CONFIG_SLQB_SYSFS is not set
