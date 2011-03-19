@@ -9348,13 +9348,16 @@ struct cgroup_subsys cpuacct_subsys = {
 #endif	/* CONFIG_CGROUP_CPUACCT */
 
 #ifndef CONFIG_SMP 
+#ifdef CONFIG_CLASSIC_RCU
 void synchronize_sched_expedited(void)
 {
         barrier();
 }
 EXPORT_SYMBOL_GPL(synchronize_sched_expedited);
+#endif
 
 #else /* #ifndef CONFIG_SMP */
+#ifdef CONFIG_CLASSIC_RCU
 
 static atomic_t synchronize_sched_expedited_count = ATOMIC_INIT(0);
 
@@ -9414,6 +9417,7 @@ void synchronize_sched_expedited(void)
 }
 EXPORT_SYMBOL_GPL(synchronize_sched_expedited);
 
+#endif
 #endif /* #else #ifndef CONFIG_SMP */
 #endif /* CONFIG_SCHED_BFS */
 
