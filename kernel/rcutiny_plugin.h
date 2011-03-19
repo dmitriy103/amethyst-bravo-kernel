@@ -531,7 +531,6 @@ void __rcu_read_lock(void)
 }
 EXPORT_SYMBOL_GPL(__rcu_read_lock);
 
-#ifndef CONFIG_CLASSIC_RCU
 /*
  * Handle special cases during rcu_read_unlock(), such as needing to
  * notify RCU core processing or task having blocked during the RCU
@@ -853,7 +852,7 @@ void exit_rcu(void)
 	if (t->rcu_read_lock_nesting == 0)
 		return;
 	t->rcu_read_lock_nesting = 1;
-	rcu_read_unlock();
+	__rcu_read_unlock();
 }
 
 #else /* #ifdef CONFIG_TINY_PREEMPT_RCU */
@@ -902,7 +901,6 @@ static void rcu_preempt_remove_callbacks(struct rcu_ctrlblk *rcp)
 static void rcu_preempt_process_callbacks(void)
 {
 }
-#endif /* CONFIG_CLASSIC_RCU */
 
 #endif /* #else #ifdef CONFIG_TINY_PREEMPT_RCU */
 
