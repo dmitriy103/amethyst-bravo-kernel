@@ -669,8 +669,10 @@ static unsigned long dirty_throttle_bandwidth(struct backing_dev_info *bdi,
 	 * bdi reserve area, safeguard against bdi dirty underflow and disk idle
 	 */
 	origin = bdi_thresh - bdi_thresh / (DIRTY_SCOPE / 2);
-	if (bdi_dirty < origin)
-		bw = bw * origin / (bdi_dirty | 1);
+	if (bdi_dirty < origin) {
+		bw = bw * origin;
+		do_div(bw, bdi_dirty | 1);
+	}
 
 	/*
 	 * honour light dirtiers higher bandwidth:
@@ -1056,10 +1058,14 @@ adjust:
 	 * when it gets close to the target. Also limit the step size in
 	 * various ways to avoid overshooting.
 	 */
-	delta >>= bw / (2 * delta + 1);
+	{
+		unsigned long long bw1 = bw;
+		do_div(bw1, 2 * delta + 1);
+		delta >>= bw1;
+	}
 	delta = min(delta, (u64)abs64(pos_bw - bw));
 	delta >>= 1;
-	delta = min(delta, bw / 8);
+	delta = min(delta, bw >> 3);
 
 	if (pos_bw > bw)
 		bw += delta;
