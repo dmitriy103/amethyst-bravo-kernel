@@ -148,11 +148,7 @@ struct task_struct *kthread_create(int (*threadfn)(void *data),
 	wait_for_completion(&create.done);
 
 	if (!IS_ERR(create.result)) {
-#ifdef CONFIG_SCHED_BFS
-		struct sched_param param = { .sched_priority = 0 };
-#else
 		static const struct sched_param param = { .sched_priority = 0 };
-#endif
 		va_list args;
 
 		va_start(args, namefmt);
@@ -188,9 +184,7 @@ void kthread_bind(struct task_struct *p, unsigned int cpu)
 	}
 
 	p->cpus_allowed = cpumask_of_cpu(cpu);
-#ifndef CONFIG_SCHED_BFS
 	p->rt.nr_cpus_allowed = 1;
-#endif
 	p->flags |= PF_THREAD_BOUND;
 }
 EXPORT_SYMBOL(kthread_bind);
