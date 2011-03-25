@@ -9344,9 +9344,6 @@ struct cgroup_subsys cpuacct_subsys = {
 };
 #endif	/* CONFIG_CGROUP_CPUACCT */
 
-<<<<<<< HEAD
-#endif /* CONFIG_SCHED_BFS */
-=======
 #ifndef CONFIG_SMP 
 void synchronize_sched_expedited(void)
 {
@@ -9415,5 +9412,4 @@ void synchronize_sched_expedited(void)
 EXPORT_SYMBOL_GPL(synchronize_sched_expedited);
 
 #endif /* #else #ifndef CONFIG_SMP */
->>>>>>> parent of ae1edc4... Port CKs BFS 363 to 2.6.38
 
