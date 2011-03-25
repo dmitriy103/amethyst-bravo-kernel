@@ -147,7 +147,7 @@ extern struct cred init_cred;
 	.run_list	= LIST_HEAD_INIT(tsk.run_list),			\
 	.time_slice	= HZ,					\
 	.tasks		= LIST_HEAD_INIT(tsk.tasks),			\
-	INIT_PUSHABLE_TASKS(tsk) 					\
+	INIT_PUSHABLE_TASKS(tsk)					\
 	.ptraced	= LIST_HEAD_INIT(tsk.ptraced),			\
 	.ptrace_entry	= LIST_HEAD_INIT(tsk.ptrace_entry),		\
 	.real_parent	= &tsk,						\

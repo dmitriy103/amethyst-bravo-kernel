@@ -81,18 +81,10 @@ extern int wait_for_completion_interruptible(struct completion *x);
 extern int wait_for_completion_killable(struct completion *x);
 extern unsigned long wait_for_completion_timeout(struct completion *x,
 						   unsigned long timeout);
-#ifdef CONFIG_SCHED_BFS
-extern unsigned long wait_for_completion_interruptible_timeout(
-        struct completion *x, unsigned long timeout);
-extern unsigned long wait_for_completion_killable_timeout(
-        struct completion *x, unsigned long timeout);
-#endif
-#ifndef CONFIG_SCHED_BFS
 extern long wait_for_completion_interruptible_timeout(
-        struct completion *x, unsigned long timeout);
+	struct completion *x, unsigned long timeout);
 extern long wait_for_completion_killable_timeout(
-        struct completion *x, unsigned long timeout);
-#endif
+	struct completion *x, unsigned long timeout);
 extern bool try_wait_for_completion(struct completion *x);
 extern bool completion_done(struct completion *x);
 

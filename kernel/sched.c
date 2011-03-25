@@ -5576,7 +5576,7 @@ void __cpuinit init_idle(struct task_struct *idle, int cpu)
 	 * The idle tasks have their own, simple scheduling class:
 	 */
 	idle->sched_class = &idle_sched_class;
-	ftrace_graph_init_task(idle);
+	ftrace_graph_init_idle_task(idle, cpu);
 }
 
 /*
@@ -9348,4 +9348,3 @@ struct cgroup_subsys cpuacct_subsys = {
 #endif	/* CONFIG_CGROUP_CPUACCT */
 
 #endif /* CONFIG_SCHED_BFS */
-

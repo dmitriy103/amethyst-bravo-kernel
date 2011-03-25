@@ -654,6 +654,7 @@ static int btrfs_defrag_file(struct file *file,
 	u64 skip = 0;
 	u64 defrag_end = 0;
 	unsigned long i;
+	int dirtied;
 	int ret;
 	int compress_type = BTRFS_COMPRESS_ZLIB;
 
@@ -766,7 +767,7 @@ again:
 
 		btrfs_set_extent_delalloc(inode, page_start, page_end, NULL);
 		ClearPageChecked(page);
-		set_page_dirty(page);
+		dirtied = set_page_dirty(page);
 		unlock_extent(io_tree, page_start, page_end, GFP_NOFS);
 
 loop_unlock:
@@ -774,7 +775,8 @@ loop_unlock:
 		page_cache_release(page);
 		mutex_unlock(&inode->i_mutex);
 
-		balance_dirty_pages_ratelimited_nr(inode->i_mapping, 1);
+		if (dirtied)
+			balance_dirty_pages_ratelimited_nr(inode->i_mapping, 1);
 		i++;
 	}
 

@@ -71,6 +71,7 @@
 
 #include <asm/tlb.h>
 #include <asm/unistd.h>
+#include <asm/mutex.h>
 
 #include "sched_cpupri.h"
 #include "workqueue_sched.h"
@@ -137,7 +138,7 @@ int rr_interval __read_mostly = 6;
  * are allowed to run five seconds as real time tasks. This is the total over
  * all online cpus.
  */
-int sched_iso_cpu __read_mostly = 25;
+int sched_iso_cpu __read_mostly = 70;
 
 /*
  * The relative length of deadline for each priority(nice) level.
@@ -2797,7 +2798,7 @@ static inline void schedule_debug(struct task_struct *prev)
 	schedstat_inc(this_rq(), sched_count);
 #ifdef CONFIG_SCHEDSTATS
 	if (unlikely(prev->lock_depth >= 0)) {
-		schedstat_inc(this_rq(), bkl_count);
+		schedstat_inc(this_rq(), rq_sched_info.bkl_count);
 		schedstat_inc(prev, sched_info.bkl_count);
 	}
 #endif
@@ -3018,7 +3019,7 @@ int mutex_spin_on_owner(struct mutex *lock, struct thread_info *owner)
 		if (task_thread_info(rq->curr) != owner || need_resched())
 			return 0;
 
-		cpu_relax();
+		arch_mutex_cpu_relax();
 	}
 
 	return 1;
@@ -3353,7 +3354,7 @@ EXPORT_SYMBOL(wait_for_completion_interruptible);
  * This waits for either a completion of a specific task to be signaled or for a
  * specified timeout to expire. It is interruptible. The timeout is in jiffies.
  */
-unsigned long __sched
+long __sched
 wait_for_completion_interruptible_timeout(struct completion *x,
 					  unsigned long timeout)
 {
@@ -3386,7 +3387,7 @@ EXPORT_SYMBOL(wait_for_completion_killable);
  * signaled or for a specified timeout to expire. It can be
  * interrupted by a kill signal. The timeout is in jiffies.
  */
-unsigned long __sched
+long __sched
 wait_for_completion_killable_timeout(struct completion *x,
 				     unsigned long timeout)
 {
@@ -3744,7 +3745,7 @@ static bool check_same_owner(struct task_struct *p)
 }
 
 static int __sched_setscheduler(struct task_struct *p, int policy,
-		       struct sched_param *param, bool user)
+				const struct sched_param *param, bool user)
 {
 	struct sched_param zero_param = { .sched_priority = 0 };
 	int queued, retval, oldpolicy = -1;
@@ -3828,12 +3829,6 @@ recheck:
 				case SCHED_BATCH:
 					if (policy == SCHED_BATCH)
 						goto out;
-                                        /*
-                                         * ANDROID: Allow tasks to move between
-                                         * SCHED_NORMAL <-> SCHED_BATCH
-                                         */
-                                        if (policy == SCHED_NORMAL)
-                                                break;
 					if (policy != SCHED_IDLEPRIO)
 						return -EPERM;
 					break;
@@ -3916,7 +3911,7 @@ out:
  * NOTE that the task may be already dead.
  */
 int sched_setscheduler(struct task_struct *p, int policy,
-		       struct sched_param *param)
+		       const struct sched_param *param)
 {
 	return __sched_setscheduler(p, policy, param, true);
 }
@@ -3935,7 +3930,7 @@ EXPORT_SYMBOL_GPL(sched_setscheduler);
  * but our caller might not have that capability.
  */
 int sched_setscheduler_nocheck(struct task_struct *p, int policy,
-			       struct sched_param *param)
+			       const struct sched_param *param)
 {
 	return __sched_setscheduler(p, policy, param, false);
 }
@@ -4468,7 +4463,7 @@ void sched_show_task(struct task_struct *p)
 	unsigned state;
 
 	state = p->state ? __ffs(p->state) + 1 : 0;
-	printk(KERN_INFO "%-13.13s %c", p->comm,
+	printk(KERN_INFO "%-15.15s %c", p->comm,
 		state < sizeof(stat_nam) - 1 ? stat_nam[state] : '?');
 #if BITS_PER_LONG == 32
 	if (state == TASK_RUNNING)
@@ -4750,30 +4745,14 @@ out:
 EXPORT_SYMBOL_GPL(set_cpus_allowed_ptr);
 
 #ifdef CONFIG_HOTPLUG_CPU
-/*
- * Reschedule a task if it's on a dead CPU.
- */
-void move_task_off_dead_cpu(int dead_cpu, struct task_struct *p)
-{
-	unsigned long flags;
-	struct rq *rq, *dead_rq;
-
-	dead_rq = cpu_rq(dead_cpu);
-	rq = task_grq_lock(p, &flags);
-	if (rq == dead_rq && task_running(p))
-		resched_task(p);
-	task_grq_unlock(&flags);
-
-}
-
 /* Run through task list and find tasks affined to just the dead cpu, then
  * allocate a new affinity */
-static void break_sole_affinity(int src_cpu)
+static void break_sole_affinity(int src_cpu, struct task_struct *idle)
 {
 	struct task_struct *p, *t;
 
 	do_each_thread(t, p) {
-		if (!online_cpus(p)) {
+		if (p != idle && !online_cpus(p)) {
 			cpumask_copy(&p->cpus_allowed, cpu_possible_mask);
 			/*
 			 * Don't tell them about moving exiting tasks or
@@ -4794,31 +4773,34 @@ static void break_sole_affinity(int src_cpu)
  * It does so by boosting its priority to highest possible.
  * Used by CPU offline code.
  */
-void sched_idle_next(void)
+void sched_idle_next(struct rq *rq, int this_cpu, struct task_struct *idle)
 {
-	int this_cpu = smp_processor_id();
-	struct rq *rq = cpu_rq(this_cpu);
-	struct task_struct *idle = rq->idle;
-	unsigned long flags;
-
 	/* cpu has to be offline */
 	BUG_ON(cpu_online(this_cpu));
 
-	/*
-	 * Strictly not necessary since rest of the CPUs are stopped by now
-	 * and interrupts disabled on the current cpu.
-	 */
-	grq_lock_irqsave(&flags);
-	break_sole_affinity(this_cpu);
+	break_sole_affinity(this_cpu, idle);
 
 	__setscheduler(idle, rq, SCHED_FIFO, STOP_PRIO);
 
 	activate_idle_task(idle);
 	set_tsk_need_resched(rq->curr);
-
-	grq_unlock_irqrestore(&flags);
 }
 
+/*
+ * Ensures that the idle task is using init_mm right before its cpu goes
+ * offline.
+ */
+void idle_task_exit(void)
+{
+	struct mm_struct *mm = current->active_mm;
+
+	BUG_ON(cpu_online(smp_processor_id()));
+
+	if (mm != &init_mm)
+		switch_mm(mm, &init_mm, current);
+	mmdrop(mm);
+}
+#endif /* CONFIG_HOTPLUG_CPU */
 void sched_set_stop_task(int cpu, struct task_struct *stop)
 {
 	struct sched_param stop_param = { .sched_priority = STOP_PRIO };
@@ -4848,22 +4830,6 @@ void sched_set_stop_task(int cpu, struct task_struct *stop)
 	}
 }
 
-/*
- * Ensures that the idle task is using init_mm right before its cpu goes
- * offline.
- */
-void idle_task_exit(void)
-{
-	struct mm_struct *mm = current->active_mm;
-
-	BUG_ON(cpu_online(smp_processor_id()));
-
-	if (mm != &init_mm)
-		switch_mm(mm, &init_mm, current);
-	mmdrop(mm);
-}
-
-#endif /* CONFIG_HOTPLUG_CPU */
 
 #if defined(CONFIG_SCHED_DEBUG) && defined(CONFIG_SYSCTL)
 
@@ -5053,21 +5019,19 @@ static void set_rq_offline(struct rq *rq)
 static int __cpuinit
 migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
 {
-#ifdef CONFIG_HOTPLUG_CPU
-	struct task_struct *idle;
-#endif
 	int cpu = (long)hcpu;
 	unsigned long flags;
 	struct rq *rq = cpu_rq(cpu);
+#ifdef CONFIG_HOTPLUG_CPU
+	struct task_struct *idle = rq->idle;
+#endif
 
-	switch (action) {
+	switch (action & ~CPU_TASKS_FROZEN) {
 
 	case CPU_UP_PREPARE:
-	case CPU_UP_PREPARE_FROZEN:
 		break;
 
 	case CPU_ONLINE:
-	case CPU_ONLINE_FROZEN:
 		/* Update our root-domain */
 		grq_lock_irqsave(&flags);
 		if (rq->rd) {
@@ -5080,8 +5044,6 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
 
 #ifdef CONFIG_HOTPLUG_CPU
 	case CPU_DEAD:
-	case CPU_DEAD_FROZEN:
-		idle = rq->idle;
 		/* Idle task back to normal (off runqueue, low prio) */
 		grq_lock_irq();
 		return_task(idle, 1);
@@ -5094,9 +5056,9 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
 		break;
 
 	case CPU_DYING:
-	case CPU_DYING_FROZEN:
 		/* Update our root-domain */
 		grq_lock_irqsave(&flags);
+		sched_idle_next(rq, cpu, idle);
 		if (rq->rd) {
 			BUG_ON(!cpumask_test_cpu(cpu, rq->rd->span));
 			set_rq_offline(rq);
@@ -6986,7 +6948,6 @@ void __init sched_init(void)
 	if (cpu_isolated_map == NULL)
 		zalloc_cpumask_var(&cpu_isolated_map, GFP_NOWAIT);
 #endif /* SMP */
-	perf_event_init();
 }
 
 #ifdef CONFIG_DEBUG_SPINLOCK_SLEEP
@@ -7203,15 +7164,6 @@ void proc_sched_show_task(struct task_struct *p, struct seq_file *m)
 
 void proc_sched_set_task(struct task_struct *p)
 {}
-#endif
-
-#ifndef CONFIG_TINY_PREEMPT_RCU
-/* No RCU torture test support */
-void synchronize_sched_expedited(void)
-{
-	barrier();
-}
-EXPORT_SYMBOL_GPL(synchronize_sched_expedited);
 #endif
 
 #ifdef CONFIG_SMP
