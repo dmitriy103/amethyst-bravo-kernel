@@ -1,6 +1,8 @@
 #!/bin/sh
 # Very simple build script
 
+rm -r ZipBuilder/system/lib/modules/*
+
 ARCH=arm make clean
 ARCH=arm make defconfig HAVS_defconfig
 ARCH=arm make -j2
