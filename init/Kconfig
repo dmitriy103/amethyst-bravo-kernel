@@ -82,6 +82,16 @@ config ZEN_DESKTOP
 	   SCHEDULER GRANULARITY: 0.3 ms
 	   SCHEDULER MAX LATENCY: 3 ms
 
+config ZEN_ANDROID
+        bool "android"
+        ---help---
+          This option sets tunables for a desktop environment.
+           DIRTY_RATIO: 50
+           BACKGROUND_DIRTY_RATIO: 20
+          *BFS ONLY*
+           ISO_CPU: 25
+           RR_INTERVAL: 6
+
 config ZEN_CUSTOM
 	bool "Custom"
 	select ZEN_CUSTOM_CHOICES
