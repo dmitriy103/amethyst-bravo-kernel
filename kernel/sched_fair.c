@@ -38,6 +38,9 @@
 #if defined(CONFIG_ZEN_DESKTOP)
 unsigned int sysctl_sched_latency = 3000000ULL;
 unsigned int normalized_sysctl_sched_latency = 3000000ULL;
+#elif defined(CONFIG_ZEN_ANDROID)
+unsigned int sysctl_sched_latency = 3200000ULL;
+unsigned int normalized_sysctl_sched_latency = 3200000ULL;
 #else
 unsigned int sysctl_sched_latency = 6000000ULL;
 unsigned int normalized_sysctl_sched_latency = 6000000ULL;
@@ -62,6 +65,9 @@ enum sched_tunable_scaling sysctl_sched_tunable_scaling
 #if defined(CONFIG_ZEN_DESKTOP)
 unsigned int sysctl_sched_min_granularity = 300000ULL;
 unsigned int normalized_sysctl_sched_min_granularity = 300000ULL;
+#elif defined(CONFIG_ZEN_ANDROID)
+unsigned int sysctl_sched_min_granularity = 400000ULL;
+unsigned int normalized_sysctl_sched_min_granularity = 400000ULL;
 #else
 unsigned int sysctl_sched_min_granularity = 750000ULL;
 unsigned int normalized_sysctl_sched_min_granularity = 750000ULL;
