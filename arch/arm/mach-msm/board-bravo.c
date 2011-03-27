@@ -316,13 +316,13 @@ static struct android_pmem_platform_data android_pmem_adsp_pdata = {
 	.cached		= 1,
 };
 
-static struct android_pmem_platform_data android_pmem_venc_pdata = {
+/*static struct android_pmem_platform_data android_pmem_venc_pdata = {
 	.name		= "pmem_venc",
 	.start		= MSM_PMEM_VENC_BASE,
 	.size		= MSM_PMEM_VENC_SIZE,
 	.no_allocator	= 0,
 	.cached		= 1,
-};
+};*/
 
 static struct platform_device android_pmem_mdp_device = {
 	.name		= "android_pmem",
@@ -340,13 +340,13 @@ static struct platform_device android_pmem_adsp_device = {
 	},
 };
 
-static struct platform_device android_pmem_venc_device = {
+/*static struct platform_device android_pmem_venc_device = {
 	.name		= "android_pmem",
 	.id		= 3,
 	.dev		= {
 		.platform_data = &android_pmem_venc_pdata,
 	},
-};
+};*/
 
 static struct resource ram_console_resources[] = {
 	{
