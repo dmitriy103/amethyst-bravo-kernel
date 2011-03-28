@@ -1580,7 +1580,7 @@ struct dentry *d_obtain_alias(struct inode *inode)
 	spin_unlock(&tmp->d_lock);
 	spin_unlock(&inode->i_lock);
 
-	spin_unlock(&dcache_lock);
+	//spin_unlock(&dcache_lock);
 	security_d_instantiate(tmp, inode);
 	return tmp;
 
