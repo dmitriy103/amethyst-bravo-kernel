@@ -85,8 +85,8 @@ struct battery_status {
  * gauge every FAST_POLL seconds.  If we're asleep and on battery
  * power, sample every SLOW_POLL seconds
  */
-#define FAST_POLL	(1 * 60)
 #define SLOW_POLL	(10 * 60)
+#define FAST_POLL	(1 * 60)
 
 static DEFINE_MUTEX(battery_log_lock);
 static struct battery_status battery_log[BATTERY_LOG_MAX];
@@ -323,12 +323,13 @@ static int ds2784_battery_read_status(struct ds2784_device_info *di)
 
 	ds2784_parse_data(di->raw, &di->status);
 
-	pr_info("batt: %3d%%, %d mV, %d mA (%d avg), %d.%d C, %d mAh\n",
+	pr_info("batt: %3d%%, %d mV, %d mA (%d avg), %d.%d C, %d mAh, CM=%d\n",
 		di->status.percentage,
 		di->status.voltage_uV / 1000, di->status.current_uA / 1000,
 		di->status.current_avg_uA / 1000,
 		di->status.temp_C / 10, di->status.temp_C % 10,
-		di->status.charge_uAh / 1000);
+		di->status.charge_uAh / 1000,
+		di->status.charge_mode);
 
 	return 0;
 }
@@ -794,7 +795,7 @@ static int battery_adjust_charge_state(struct ds2784_device_info *di)
 	 * - CHGTF flag is set
 	 */
 
-	if (di->status.status_reg & 0x80) {
+	if ((di->status.status_reg & 0x80) && (di->status.percentage>99)) {
 		di->status.battery_full = 1;
 		charge_mode = CHARGE_BATT_DISABLE;
 	}
