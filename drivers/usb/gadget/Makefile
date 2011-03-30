@@ -75,3 +75,4 @@ obj-$(CONFIG_USB_ANDROID_MTP)	+= f_mtp.o
 obj-$(CONFIG_USB_ANDROID_RNDIS)	+= f_rndis.o u_ether.o
 # MSM specific
 obj-$(CONFIG_USB_ANDROID_DIAG)	+= diag.o
+obj-$(CONFIG_USB_ANDROID_ACCESSORY)	+= f_accessory.o
