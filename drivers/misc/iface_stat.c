@@ -196,7 +196,8 @@ void create_iface_stat(const struct in_device *in_dev)
  */
 void iface_stat_update(struct net_device *dev)
 {
-	const struct net_device_stats *stats = dev_get_stats(dev);
+	struct rtnl_link_stats64 temp;
+	const struct net_device_stats *stats = dev_get_stats(dev, &temp);
 	struct iface_stat *entry;
 
 	ASSERT_RTNL();
