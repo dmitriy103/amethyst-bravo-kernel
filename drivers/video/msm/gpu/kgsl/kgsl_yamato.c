@@ -787,7 +787,7 @@ bool kgsl_yamato_is_idle(struct kgsl_device *device)
 	BUG_ON(!(rb->flags & KGSL_FLAGS_STARTED));
 
 	GSL_RB_GET_READPTR(rb, &rb->rptr);
-	if (rb->rptr == rb->wptr) {
+	if (!kgsl_driver.active_cnt && (rb->rptr == rb->wptr)) {
 		kgsl_yamato_regread(device, REG_RBBM_STATUS, &rbbm_status);
 		if (rbbm_status == 0x110)
 			return true;
