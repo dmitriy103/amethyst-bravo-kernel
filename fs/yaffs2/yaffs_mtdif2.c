@@ -1,7 +1,7 @@
 /*
  * YAFFS: Yet Another Flash File System. A NAND-flash specific file system.
  *
- * Copyright (C) 2002-2011 Aleph One Ltd.
+ * Copyright (C) 2002-2010 Aleph One Ltd.
  *   for Toby Churchill Ltd and Brightstar Engineering
  *
  * Created by Charles Manning <charles@aleph1.co.uk>
@@ -27,19 +27,15 @@
 #include "yaffs_linux.h"
 
 /* NB For use with inband tags....
- * We assume that the data buffer is of size total_bytes_per_chunk so
- * that we can also use it to load the tags.
+ * We assume that the data buffer is of size total_bytes_per_chunk so that we can also
+ * use it to load the tags.
  */
 int nandmtd2_write_chunk_tags(struct yaffs_dev *dev, int nand_chunk,
-			      const u8 *data,
+			      const u8 * data,
 			      const struct yaffs_ext_tags *tags)
 {
 	struct mtd_info *mtd = yaffs_dev_to_mtd(dev);
-#if (MTD_VERSION_CODE > MTD_VERSION(2, 6, 17))
 	struct mtd_oob_ops ops;
-#else
-	size_t dummy;
-#endif
 	int retval = 0;
 
 	loff_t addr;
@@ -67,14 +63,13 @@ int nandmtd2_write_chunk_tags(struct yaffs_dev *dev, int nand_chunk,
 		struct yaffs_packed_tags2_tags_only *pt2tp;
 		pt2tp =
 		    (struct yaffs_packed_tags2_tags_only *)(data +
-							dev->
-							data_bytes_per_chunk);
+							    dev->
+							    data_bytes_per_chunk);
 		yaffs_pack_tags2_tags_only(pt2tp, tags);
 	} else {
 		yaffs_pack_tags2(&pt, tags, !dev->param.no_tags_ecc);
-	}
+        }
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 17))
 	ops.mode = MTD_OOB_AUTO;
 	ops.ooblen = (dev->param.inband_tags) ? 0 : packed_tags_size;
 	ops.len = dev->param.total_bytes_per_chunk;
@@ -83,18 +78,6 @@ int nandmtd2_write_chunk_tags(struct yaffs_dev *dev, int nand_chunk,
 	ops.oobbuf = (dev->param.inband_tags) ? NULL : packed_tags_ptr;
 	retval = mtd->write_oob(mtd, addr, &ops);
 
-#else
-	if (!dev->param.inband_tags) {
-		retval =
-		    mtd->write_ecc(mtd, addr, dev->data_bytes_per_chunk,
-				   &dummy, data, (u8 *) packed_tags_ptr, NULL);
-	} else {
-		retval =
-		    mtd->write(mtd, addr, dev->param.total_bytes_per_chunk,
-			       &dummy, data);
-	}
-#endif
-
 	if (retval == 0)
 		return YAFFS_OK;
 	else
@@ -102,12 +85,11 @@ int nandmtd2_write_chunk_tags(struct yaffs_dev *dev, int nand_chunk,
 }
 
 int nandmtd2_read_chunk_tags(struct yaffs_dev *dev, int nand_chunk,
-			     u8 *data, struct yaffs_ext_tags *tags)
+			     u8 * data, struct yaffs_ext_tags *tags)
 {
 	struct mtd_info *mtd = yaffs_dev_to_mtd(dev);
-#if (MTD_VERSION_CODE > MTD_VERSION(2, 6, 17))
 	struct mtd_oob_ops ops;
-#endif
+
 	size_t dummy;
 	int retval = 0;
 	int local_data = 0;
@@ -129,12 +111,11 @@ int nandmtd2_read_chunk_tags(struct yaffs_dev *dev, int nand_chunk,
 
 		if (!data) {
 			local_data = 1;
-			data = yaffs_get_temp_buffer(dev);
+			data = yaffs_get_temp_buffer(dev, __LINE__);
 		}
 
 	}
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 17))
 	if (dev->param.inband_tags || (data && !tags))
 		retval = mtd->read(mtd, addr, dev->param.total_bytes_per_chunk,
 				   &dummy, data);
@@ -147,29 +128,13 @@ int nandmtd2_read_chunk_tags(struct yaffs_dev *dev, int nand_chunk,
 		ops.oobbuf = yaffs_dev_to_lc(dev)->spare_buffer;
 		retval = mtd->read_oob(mtd, addr, &ops);
 	}
-#else
-	if (!dev->param.inband_tags && data && tags) {
-
-		retval = mtd->read_ecc(mtd, addr, dev->data_bytes_per_chunk,
-				       &dummy, data, dev->spare_buffer, NULL);
-	} else {
-		if (data)
-			retval =
-			    mtd->read(mtd, addr, dev->data_bytes_per_chunk,
-				      &dummy, data);
-		if (!dev->param.inband_tags && tags)
-			retval =
-			    mtd->read_oob(mtd, addr, mtd->oobsize, &dummy,
-					  dev->spare_buffer);
-	}
-#endif
 
 	if (dev->param.inband_tags) {
 		if (tags) {
 			struct yaffs_packed_tags2_tags_only *pt2tp;
 			pt2tp =
-				(struct yaffs_packed_tags2_tags_only *)
-				&data[dev->data_bytes_per_chunk];
+			    (struct yaffs_packed_tags2_tags_only *)&data[dev->
+									 data_bytes_per_chunk];
 			yaffs_unpack_tags2_tags_only(tags, pt2tp);
 		}
 	} else {
@@ -182,7 +147,7 @@ int nandmtd2_read_chunk_tags(struct yaffs_dev *dev, int nand_chunk,
 	}
 
 	if (local_data)
-		yaffs_release_temp_buffer(dev, data);
+		yaffs_release_temp_buffer(dev, data, __LINE__);
 
 	if (tags && retval == -EBADMSG
 	    && tags->ecc_result == YAFFS_ECC_RESULT_NO_ERROR) {
@@ -205,8 +170,7 @@ int nandmtd2_mark_block_bad(struct yaffs_dev *dev, int block_no)
 	struct mtd_info *mtd = yaffs_dev_to_mtd(dev);
 	int retval;
 	yaffs_trace(YAFFS_TRACE_MTD,
-		"nandmtd2_mark_block_bad %d",
-		block_no);
+		"nandmtd2_mark_block_bad %d", block_no);
 
 	retval =
 	    mtd->block_markbad(mtd,
@@ -221,7 +185,7 @@ int nandmtd2_mark_block_bad(struct yaffs_dev *dev, int block_no)
 }
 
 int nandmtd2_query_block(struct yaffs_dev *dev, int block_no,
-			 enum yaffs_block_state *state, u32 *seq_number)
+			 enum yaffs_block_state *state, u32 * seq_number)
 {
 	struct mtd_info *mtd = yaffs_dev_to_mtd(dev);
 	int retval;
@@ -244,15 +208,14 @@ int nandmtd2_query_block(struct yaffs_dev *dev, int block_no,
 
 		if (t.chunk_used) {
 			*seq_number = t.seq_number;
-			*state = YAFFS_BLOCK_STATE_NEEDS_SCAN;
+			*state = YAFFS_BLOCK_STATE_NEEDS_SCANNING;
 		} else {
 			*seq_number = 0;
 			*state = YAFFS_BLOCK_STATE_EMPTY;
 		}
 	}
 	yaffs_trace(YAFFS_TRACE_MTD,
-		"block is bad seq %d state %d",
-		*seq_number, *state);
+		"block is bad seq %d state %d", *seq_number, *state);
 
 	if (retval == 0)
 		return YAFFS_OK;
