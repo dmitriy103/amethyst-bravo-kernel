@@ -98,6 +98,10 @@ static int cpufreq_set(struct cpufreq_policy *policy, unsigned int freq)
 	 *         cpufreq_governor_userspace (lock userspace_mutex)
 	 */
 	ret = __cpufreq_driver_target(policy, freq, CPUFREQ_RELATION_L);
+	if (freq == cpu_max_freq)
+		cpu_nonscaling(policy->cpu);
+	else
+		cpu_scaling(policy->cpu);
 
  err:
 	mutex_unlock(&userspace_mutex);
@@ -143,7 +147,7 @@ static int cpufreq_governor_userspace(struct cpufreq_policy *policy,
 				per_cpu(cpu_cur_freq, cpu));
 
 		mutex_unlock(&userspace_mutex);
-		cpu_scales(cpu);
+		cpu_scaling(cpu);
 		break;
 	case CPUFREQ_GOV_STOP:
 		mutex_lock(&userspace_mutex);

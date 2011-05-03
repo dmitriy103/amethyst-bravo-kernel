@@ -878,10 +878,10 @@ static inline void resched_suitable_idle(struct task_struct *p)
 }
 /*
  * Flags to tell us whether this CPU is running a CPU frequency governor that
- * scales its speed or not. No locking required as the very rare wrongly read
- * value would be harmless.
+ * has slowed its speed or not. No locking required as the very rare wrongly
+ * read value would be harmless.
  */
-void cpu_scales(int cpu)
+void cpu_scaling(int cpu)
 {
 	cpu_rq(cpu)->scaling = 1;
 }
@@ -926,7 +926,7 @@ static inline void resched_suitable_idle(struct task_struct *p)
 {
 }
 
-void cpu_scales(int __unused)
+void cpu_scaling(int __unused)
 {
 }
 
@@ -943,7 +943,7 @@ static inline int scaling_rq(struct rq *rq)
 	return 0;
 }
 #endif /* CONFIG_SMP */
-EXPORT_SYMBOL_GPL(cpu_scales);
+EXPORT_SYMBOL_GPL(cpu_scaling);
 EXPORT_SYMBOL_GPL(cpu_nonscaling);
 
 /*
@@ -1073,8 +1073,10 @@ static inline void
 swap_sticky(struct rq *rq, unsigned long cpu, struct task_struct *p)
 {
 	if (rq->sticky_task) {
-		if (rq->sticky_task == p)
+		if (rq->sticky_task == p) {
+			p->sticky = 1;
 			return;
+		}
 		if (rq->sticky_task->sticky) {
 			rq->sticky_task->sticky = 0;
 			resched_closest_idle(rq, cpu, rq->sticky_task);
@@ -2018,8 +2020,7 @@ unsigned long nr_active(void)
 unsigned long this_cpu_load(void)
 {
 	return this_rq()->rq_running +
-		(queued_notrunning() + nr_uninterruptible()) /
-		grq.noc ? : 1;
+		((queued_notrunning() + nr_uninterruptible()) / grq.noc);
 }
 
 /* Variables and functions for calc_load */
@@ -6990,6 +6991,7 @@ void __init sched_init(void)
 	grq.last_jiffy = jiffies;
 	raw_spin_lock_init(&grq.iso_lock);
 	grq.iso_ticks = grq.iso_refractory = 0;
+	grq.noc = 1;
 #ifdef CONFIG_SMP
 	init_defrootdomain();
 	grq.qnr = grq.idle_cpus = 0;
