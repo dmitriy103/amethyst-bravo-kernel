@@ -522,7 +522,7 @@ int kgsl_yamato_init(struct kgsl_device *device, struct kgsl_devconfig *config)
 	kgsl_yamato_regwrite(device, REG_RBBM_PM_OVERRIDE2, 0xffffffff);
 
 	kgsl_yamato_regwrite(device, REG_RBBM_SOFT_RESET, 0xFFFFFFFF);
-	msleep(50);
+	usleep_range(10000, 15000);
 	kgsl_yamato_regwrite(device, REG_RBBM_SOFT_RESET, 0x00000000);
 
 	kgsl_yamato_regwrite(device, REG_RBBM_CNTL, 0x00004442);
@@ -787,7 +787,7 @@ bool kgsl_yamato_is_idle(struct kgsl_device *device)
 	BUG_ON(!(rb->flags & KGSL_FLAGS_STARTED));
 
 	GSL_RB_GET_READPTR(rb, &rb->rptr);
-	if (rb->rptr == rb->wptr) {
+	if (!kgsl_driver.active_cnt && (rb->rptr == rb->wptr)) {
 		kgsl_yamato_regread(device, REG_RBBM_STATUS, &rbbm_status);
 		if (rbbm_status == 0x110)
 			return true;
@@ -878,7 +878,7 @@ static inline int _wait_timestamp(struct kgsl_device *device,
 {
 	long status;
 
-	status = wait_event_interruptible_timeout(device->ib1_wq,
+	status = wait_io_event_interruptible_timeout(device->ib1_wq,
 			kgsl_cmdstream_check_timestamp(device, timestamp),
 			msecs_to_jiffies(msecs));
 
