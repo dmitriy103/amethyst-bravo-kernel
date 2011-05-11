@@ -60,6 +60,9 @@ static struct work_struct freq_scale_work;
 static cpumask_t work_cpumask;
 static unsigned int suspended;
 
+#define CONFIG_MSM_CPU_FREQ_MAX 998400
+#define CONFIG_MSM_CPU_FREQ_MIN 245000
+
 /*
  * The minimum amount of time to spend at a frequency before we can ramp down,
  * default is 45ms.
