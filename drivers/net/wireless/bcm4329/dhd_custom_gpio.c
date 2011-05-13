@@ -20,7 +20,7 @@
 * software in any way with any other Broadcom software provided under a license
 * other than the GPL, without Broadcom's express prior written consent.
 *
-* $Id: dhd_custom_gpio.c,v 1.1.4.8.4.1 2010/09/02 23:13:16 Exp $
+* $Id: dhd_custom_gpio.c,v 1.1.4.8.4.4 2011/01/20 20:23:09 Exp $
 */
 
 
@@ -178,26 +178,23 @@ dhd_custom_get_mac_address(unsigned char *buf)
 }
 #endif /* GET_CUSTOM_MAC_ENABLE */
 
+#define EXAMPLE_TABLE
 /* Customized Locale table : OPTIONAL feature */
 const struct cntry_locales_custom translate_custom_table[] = {
 /* Table should be filled out based on custom platform regulatory requirement */
 #ifdef EXAMPLE_TABLE
-	{"",   "XY",  4}  /* universal */
 	{"US", "US", 69}, /* input ISO "US" to : US regrev 69 */
 	{"CA", "US", 69}, /* input ISO "CA" to : US regrev 69 */
-	{"EU", "EU",  5}, /* input ISO "EU" to : EU regrev 05 */
-	{"FR", "EU",  5},
-	{"DE", "EU",  5},
-	{"IR", "EU",  5},
-	{"UK", "EU",  5}, /* input ISO "UK" to : EU regrev 05 */
-	{"KR", "XY",  3},
-	{"AU", "XY",  3},
-	{"CN", "XY",  3}, /* input ISO "CN" to : XY regrev 03 */
-	{"HK", "XY",  3},
-	{"TW", "XY",  3},
-	{"BR", "XY",  3},
-	{"MX", "XY",  3},
-	{"AR", "XY",  3}
+	{"EU", "EU", 05}, /* input ISO "EU" to : EU regrev 05 */
+	{"FR", "EU", 05},
+	{"DE", "EU", 05},
+	{"IR", "EU", 05},
+	{"UK", "EU", 05}, /* input ISO "UK" to : EU regrev 05 */
+	{"KR", "XY", 03},
+	{"AU", "XY", 03},
+	{"CN", "XY", 03}, /* input ISO "CN" to : XY regrev 03 */
+	{"TW", "XY", 03},
+	{"AR", "XY", 03}
 #endif /* EXAMPLE_TABLE */
 };
 
